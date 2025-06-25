@@ -29,3 +29,6 @@ client: $(CLIENT_OBJECTS)
 
 clean:
 	rm -f *.o $(TARGETS)
+
+format:
+	clang-format -i $(SOURCES) $(HEADERS)
