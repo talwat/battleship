@@ -15,8 +15,7 @@ struct player {
   int fd;
 };
 
-struct player wait_for_player(uint8_t id, int fd, struct sockaddr *address,
-                              socklen_t *address_len) {
+struct player wait_for_player(uint8_t id, int fd, struct sockaddr *address, socklen_t *address_len) {
   int connection = accept(fd, address, address_len);
   if (connection < 0) {
     perror("error: failed to accept connection\n");

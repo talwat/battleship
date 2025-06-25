@@ -31,4 +31,4 @@ clean:
 	rm -f *.o $(TARGETS)
 
 format:
-	clang-format -i $(SOURCES) $(HEADERS)
+	clang-format -i -- *.c *.h
