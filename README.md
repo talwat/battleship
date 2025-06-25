@@ -40,3 +40,89 @@ This packet is sent by the server to the player right after `LOG_IN`, notifying 
 | Field | Size   |
 | ----- | ------ |
 | `ID`  | 1 Byte |
+
+### `0x2` - `SETUP`
+
+Content Length: 16 bytes.
+
+This packet is sent to both players by the server when it is ready to recieve ship placements/start setup.
+
+| Field               | Size     |
+| ------------------- | -------- |
+| `OPPONENT_USERNAME` | 16 Bytes |
+
+### `0x3` - `PLACE`
+
+Content Length: 5 bytes.
+
+This packet is sent by each player to the server after `START`.
+It determines where each player wants to put each ships, determined by their leftmost or uppermost coordinate.
+
+| Field        | Size   |
+| ------------ | ------ |
+| `CARRIER`    | 1 Byte |
+| `BATTLESHIP` | 1 Byte |
+| `CRUISER`    | 1 Byte |
+| `SUBMARINE`  | 1 Byte |
+| `DESTROYER`  | 1 Byte |
+
+Each ship location byte has the first bit be `0` if it is horizontal and `1` if it is vertical.
+Then, the next 7 bits dictate the location. Because battleship is played on a 10x10 board,
+there will be three unused bits (`0___0000`).
+
+### `0x4` - `TURN`
+
+Content Length: 1 byte.
+
+This is sent to both player by the server, informing them of who's turn it is.
+
+| Field      | Size   |
+| ---------- | ------ |
+| `PLAYER`   | 1 Byte |
+
+`PLAYER` is just the ID of the active player.
+
+### `0x5` - `SELECT`
+
+Content Length: 1 byte.
+
+This is sent to the server by a player in order for them to select a tile to strike.
+
+| Field      | Size   |
+| ---------- | ------ |
+| `POSITION` | 1 Byte |
+
+Here, `POSITION` is the the first 4 bits determine the x-coordinate (1-10) and the last four bits the y-coordinate (A-J).
+
+### `0x6` - `TURN_RESULT`
+
+Content Length: 3 bytes.
+
+This is sent to both players to notify them whether the previous strike was successful or not, and where it was.
+
+| Field      | Size   |
+| ---------- | ------ |
+| `PLAYER`   | 1 Byte |
+| `POSITION` | 1 Byte |
+| `RESULT`   | 1 Byte |
+
+- `PLAYER` is the ID of the player who's turn it was.
+- `POSITION` is in the same as in the `SELECT` packet.
+- `RESULT` can either be 0 for a miss, 1 for a hit, and 2 for a sink.
+
+### `0x7` - `END`
+
+Content Length: 1 byte.
+
+This is sent to both players when the game has ended, and one has won.
+This will either be sent after a TURN_RESULT, or after one player quits.
+
+| Field      | Size   |
+| ---------- | ------ |
+| `WINNER`   | 1 Byte |
+
+### `0x8` - `QUIT`
+
+Content Length: 0 bytes.
+
+This can be sent by a player at any time, and will end the game right after it is sent to the server.
