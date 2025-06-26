@@ -1,4 +1,5 @@
 #include "packet.h"
+#include "game.h"
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -27,22 +28,21 @@ const struct {
     {.length = 0, .name = "QUIT"},          // 0x8
 };
 
-bool parse_placements(unsigned char *data, uint8_t placements[5][3]) {
+bool parse_placements(unsigned char *data, struct ship placements[5]) {
   for (int i = 0; i < PACKETS[3].length; i+=2) {
       unsigned char position = data[i+1];
 
       uint8_t high = (position >> 4) & 0x0F;
       uint8_t low  = position & 0x0F;
 
-      placements[i/2][0] = data[i];
-      placements[i/2][1] = low;
-      placements[i/2][2] = high;
+      placements[i/2].orientation = data[i];
+      placements[i/2].x = low;
+      placements[i/2].y = high;
   }
 
   return true;
 }
 
-/* Reads a packet from the file descriptor. */
 struct packet read_packet(int fd) {
   uint8_t type;
   read(fd, &type, sizeof(type));
