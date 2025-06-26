@@ -13,9 +13,9 @@ void render_placements(struct ship ships[5], enum Tile board[10][10]) {
 
     for (int j = 0; j < length; j++) {
       if (ships[i].orientation == HORIZONTAL) {
-        board[x + j][y] = TILE_SHIP;
+        board[x + j][y] = TILE_SHIP_HORIZONTAL;
       } else {
-        board[x][y + j] = TILE_SHIP;
+        board[x][y + j] = TILE_SHIP_VERTICAL;
       }
     }
   }
@@ -26,16 +26,19 @@ void render_board(enum Tile board[10][10]) {
     for (int x = 0; x < 10; x++) {
       switch (board[x][y]) {
       case TILE_EMPTY:
-        printf(".");
+        printf(". ");
         break;
-      case TILE_SHIP:
-        printf("S");
+      case TILE_SHIP_HORIZONTAL:
+        printf("- ");
+        break;
+      case TILE_SHIP_VERTICAL:
+        printf("| ");
         break;
       case TILE_HIT:
-        printf("H");
+        printf("H ");
         break;
       case TILE_MISS:
-        printf("M");
+        printf("M ");
         break;
       }
     }

@@ -1,3 +1,5 @@
+#include <SDL.h>
+#include <SDL_audio.h>
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <netinet/in.h>
@@ -9,11 +11,25 @@
 
 #include "game.h"
 #include "packet.h"
-
-#define PORT 8080
+#include "sam.h"
+#include "shared.h"
 
 uint8_t merge(uint8_t lower, uint8_t upper) {
   return ((upper & 0x0F) << 4) | (lower & 0x0F);
+}
+
+int speak_text(const char *text) {
+  char input[256] = {0};
+  strncpy(input, text, 255);
+
+  if (!TextToPhonemes((unsigned char *)input))
+    return 1;
+
+  SetInput(input);
+  SAMMain();
+  OutputSound();
+
+  return 0;
 }
 
 void serialize_placements(unsigned char *data, uint8_t placements[5][3]) {
@@ -44,6 +60,7 @@ void handle(int connection) {
 
   unsigned char *opponent_name = setup.data;
   printf("client: opponent name is %s\n", opponent_name);
+  speak_text("BEGIN.");
 
   uint8_t placements[5][3] = {
       {1, 0, 0}, // CARRIER
@@ -103,6 +120,17 @@ void handle(int connection) {
 }
 
 int main() {
+  // Initialize SDL audio for SAM.
+  if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+    perror("error: SDL_Init failed\n");
+    exit(EXIT_FAILURE);
+  }
+
+  // Lower SDL volume
+  speak_text("WELCOME TO BATTLESHIP.");
+
+  atexit(SDL_Quit);
+
   int fd;
   struct sockaddr_in address;
   socklen_t address_len = sizeof(address);

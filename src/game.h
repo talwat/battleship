@@ -44,9 +44,10 @@ enum Orientation {
 
 enum Tile {
   TILE_EMPTY = 0,
-  TILE_SHIP = 1,
-  TILE_HIT = 2,
-  TILE_MISS = 3
+  TILE_SHIP_HORIZONTAL = 1,
+  TILE_SHIP_VERTICAL = 2,
+  TILE_HIT = 3,
+  TILE_MISS = 4
 };
 
 /**

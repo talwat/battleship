@@ -7,8 +7,7 @@
 
 #include "game.h"
 #include "packet.h"
-
-#define PORT 8080
+#include "shared.h"
 
 /**
  * @struct client
@@ -67,7 +66,7 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
  * @return HIT if a ship is present at the specified coordinates, otherwise MISS.
  */
 enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int x, int y) {
-  if (board[x][y] == TILE_SHIP) {
+  if (board[x][y] == TILE_SHIP_HORIZONTAL || board[x][y] == TILE_SHIP_VERTICAL) {
     board[x][y] = TILE_HIT;
 
     bool sunk = false; // Whether the player sunk a ship this turn
@@ -124,7 +123,7 @@ enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int 
   return TURN_MISS;
 }
 
-struct game {
+struct game_instance {
   enum Player current_player;
   struct ship ships1[5];
   struct ship ships2[5];
@@ -137,7 +136,7 @@ struct game {
 /**
  * @brief Main game loop for the Battleship server, handling player turns and game state.
  *
- * Specifically, this function alternates turns between two players,
+ * Specifically, this function alternates turns between the two players,
  * sending and receiving packets to/from clients, processing their moves,
  * updating the game boards, and broadcasting turn results. The loop continues
  * until a winner is determined.
@@ -149,7 +148,7 @@ struct game {
  * @param board2         10x10 boolean array representing player 2's board.
  * @return enum Player   The winner of the game (PLAYER1 or PLAYER2).
  */
-enum Player loop(struct game game) {
+enum Player loop(struct game_instance game) {
   enum Player winner = PLAYER_NONE;
 
   while (winner == PLAYER_NONE) {
@@ -176,12 +175,29 @@ enum Player loop(struct game game) {
 
     enum TurnResult result = TURN_MISS;
 
-    printf("server: player %d selected target (%d, %c)\n", game.current_player, x + 1, 'A' + y);
     if (game.current_player == PLAYER1) {
       result = process_turn(game.ships2, game.board2, x, y);
     } else {
       result = process_turn(game.ships1, game.board1, x, y);
     }
+
+    const char *result_str;
+    switch (result) {
+      case TURN_MISS:
+        result_str = "miss";
+        break;
+      case TURN_HIT:  
+        result_str = "hit";
+        break;
+      case TURN_SINK:
+        result_str = "sink";
+        break;
+      case TURN_WIN:
+        result_str = "win";
+        break;
+    }
+
+    printf("server: player %d struck target (%d, %c) with result %d (%s)\n", game.current_player, x + 1, 'A' + y, result, result_str);
 
     uint8_t data[3] = {game.current_player, target, result};
     struct packet turn_result = new_packet(TURN_RESULT, data);
@@ -201,7 +217,9 @@ enum Player loop(struct game game) {
       }
     }
 
+    printf("player 1's board:\n");
     render_board(game.board1);
+    printf("\nplayer 2's board:\n");
     render_board(game.board2);
   }
 
@@ -217,7 +235,7 @@ enum Player loop(struct game game) {
  * @param board1  The 10x10 board for player 1, to be filled with ship placements.
  * @param board2  The 10x10 board for player 2, to be filled with ship placements.
  */
-void get_placements(struct game *game) {
+void get_placements(struct game_instance *game) {
   struct packet setup1 = new_packet(SETUP, (unsigned char *)game->player2.name);
   write_packet(game->player1.fd, &setup1);
   struct packet setup2 = new_packet(SETUP, (unsigned char *)game->player1.name);
@@ -283,7 +301,7 @@ int main(int argc, char const *argv[]) {
 
   printf("server: all players connected, sending setup packets\n");
 
-  struct game game = {
+  struct game_instance game = {
       .current_player = PLAYER1,
       .ships1 = {},
       .ships2 = {},

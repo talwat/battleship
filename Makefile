@@ -1,7 +1,7 @@
 TARGETS = server client
 CC = gcc
-CFLAGS = -g -Wall
-LIBS = -lm
+CFLAGS = -g -Wall -DUSESDL `sdl2-config --cflags` -Ilib
+LIBS = -Llib -lsam -lm `sdl2-config --libs`
 
 SOURCES = $(wildcard src/*.c)
 HEADERS = $(wildcard src/*.h)
