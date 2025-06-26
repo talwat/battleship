@@ -3,22 +3,23 @@ CC = gcc
 CFLAGS = -g -Wall
 LIBS = -lm
 
-SOURCES = $(wildcard *.c)
-HEADERS = $(wildcard *.h)
+SOURCES = $(wildcard src/*.c)
+HEADERS = $(wildcard src/*.h)
 
-SERVER_MAIN = server.c
-CLIENT_MAIN = client.c
+SERVER_MAIN = src/server.c
+CLIENT_MAIN = src/client.c
 
 SHARED_SOURCES = $(filter-out $(SERVER_MAIN) $(CLIENT_MAIN), $(SOURCES))
 
-SERVER_OBJECTS = $(patsubst %.c, %.o, $(SERVER_MAIN) $(SHARED_SOURCES))
-CLIENT_OBJECTS = $(patsubst %.c, %.o, $(CLIENT_MAIN) $(SHARED_SOURCES))
+SERVER_OBJECTS = $(patsubst src/%.c, obj/%.o, $(SERVER_MAIN) $(SHARED_SOURCES))
+CLIENT_OBJECTS = $(patsubst src/%.c, obj/%.o, $(CLIENT_MAIN) $(SHARED_SOURCES))
 
 .PHONY: all clean
 
 all: $(TARGETS)
 
-%.o: %.c $(HEADERS)
+obj/%.o: src/%.c $(HEADERS)
+	mkdir -p obj
 	$(CC) $(CFLAGS) -c $< -o $@
 
 server: $(SERVER_OBJECTS)
@@ -28,7 +29,7 @@ client: $(CLIENT_OBJECTS)
 	$(CC) $(CFLAGS) $(CLIENT_OBJECTS) -o $@ $(LIBS)
 
 clean:
-	rm -f *.o $(TARGETS)
+	rm -rf obj *.o $(TARGETS)
 
 format:
-	clang-format -i -- *.c *.h
+	clang-format -i -- src/*.c src/*.h

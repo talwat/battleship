@@ -1,6 +1,7 @@
 .vscode/
 server
 client
+obj/
 
 # Object files
 *.o
