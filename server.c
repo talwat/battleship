@@ -10,28 +10,26 @@
 
 #define PORT 8080
 
-struct player {
+struct client {
   uint8_t id;
   char *name;
   int fd;
 };
 
-struct player wait_for_player(uint8_t id, int fd, struct sockaddr *address, socklen_t *address_len) {
+struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, socklen_t *address_len) {
   int connection = accept(fd, address, address_len);
   if (connection < 0) {
     perror("error: failed to accept connection\n");
     exit(EXIT_FAILURE);
-  } else {
-    printf("server: connection accepted for player %d\n", id);
   }
 
   struct packet login = read_packet(connection);
   char *name = (char *)login.data;
 
-  struct packet confirm = new_packet(1, &id);
+  struct packet confirm = new_packet(LOGIN_CONFIRM, &id);
   write_packet(connection, &confirm);
 
-  struct player result = {
+  struct client result = {
       .id = id,
       .fd = connection,
       .name = name,
@@ -42,7 +40,84 @@ struct player wait_for_player(uint8_t id, int fd, struct sockaddr *address, sock
   return result;
 }
 
-void close_player(struct player *player) {
+enum TurnResult process_turn(bool board[10][10], int x, int y) {
+  if (board[y][x]) {
+    return HIT;
+  }
+  return MISS;
+}
+
+enum Player loop(enum Player *current_player, struct client player1, struct client player2, bool board1[10][10], bool board2[10][10]) {
+  enum Player winner = PLAYER_NONE;
+
+  while (winner == PLAYER_NONE) {
+    struct packet turn = new_packet(TURN, (unsigned char *)current_player);
+    write_packet(player1.fd, &turn);
+    write_packet(player2.fd, &turn);
+
+    struct packet select;
+    printf("server: waiting for player %d to select a target\n", *current_player);
+    if (*current_player == PLAYER1) {
+      select = read_packet(player1.fd);
+    } else {
+      select = read_packet(player2.fd);
+    }
+
+    uint8_t target = select.data[0];
+    uint8_t x = target & 0x0F;
+    uint8_t y = (target >> 4) & 0x0F;
+
+    if (x >= 10 || y >= 10) {
+      perror("error: invalid target selected\n");
+      continue;
+    }
+
+    enum TurnResult result = MISS;
+
+    printf("server: player %d selected target (%d, %d)\n", *current_player, x, y);
+    if (*current_player == PLAYER1) {
+      result = process_turn(board2, x, y);
+    } else {
+      result = process_turn(board1, x, y);
+    }
+
+    uint8_t data[3] = {*current_player, target, result};
+    struct packet turn_result = new_packet(TURN_RESULT, data);
+    write_packet(player1.fd, &turn_result);
+    write_packet(player2.fd, &turn_result);
+
+    if (result != HIT) {
+      if (*current_player == PLAYER1) {
+        *current_player = PLAYER2;
+      } else {
+        *current_player = PLAYER1;
+      }
+    }
+  }
+
+  return winner;
+}
+
+void get_placements(struct client player1, struct client player2, bool board1[10][10], bool board2[10][10]) {
+  struct packet setup1 = new_packet(SETUP, (unsigned char *)player2.name);
+  write_packet(player1.fd, &setup1);
+  struct packet setup2 = new_packet(SETUP, (unsigned char *)player1.name);
+  write_packet(player2.fd, &setup2);
+
+  printf("server: waiting for placements\n");
+  struct packet place1 = read_packet(player1.fd);
+  struct packet place2 = read_packet(player2.fd);
+
+  uint8_t ships1[5][3] = {0};
+  uint8_t ships2[5][3] = {0};
+  parse_placements(place1.data, ships1);
+  parse_placements(place2.data, ships2);
+
+  render_placements(ships1, board1);
+  render_placements(ships1, board2);
+}
+
+void close_player(struct client *player) {
   printf("server: player %d connection closed\n", player->id);
   close(player->fd);
 }
@@ -79,36 +154,27 @@ int main(int argc, char const *argv[]) {
     printf("server: listening on port %d\n", PORT);
   }
 
-  struct player player1 =
-      wait_for_player(1, fd, (struct sockaddr *)&address, &address_len);
-  struct player player2 =
-      wait_for_player(2, fd, (struct sockaddr *)&address, &address_len);
+  struct client player1 =
+      wait_for_client(1, fd, (struct sockaddr *)&address, &address_len);
+  struct client player2 =
+      wait_for_client(2, fd, (struct sockaddr *)&address, &address_len);
 
   printf("server: all players connected, sending setup packets\n");
-  struct packet setup1 = new_packet(2, player2.name);
-  write_packet(player1.fd, &setup1);
-  struct packet setup2 = new_packet(2, player1.name);
-  write_packet(player2.fd, &setup2);
+  bool board1[10][10] = {0};
+  bool board2[10][10] = {0};
+  get_placements(player1, player2, board1, board2);
 
-  printf("server: waiting for placements\n");
-  struct packet place1 = read_packet(player1.fd);
-  struct packet place2 = read_packet(player2.fd);
+  enum Player current_player = PLAYER1;
+  enum Player winner = PLAYER_NONE;
 
-  uint8_t ships1[5][3] = {0};
-  uint8_t ships2[5][3] = {0};
-  parse_placements(place1.data, ships1);
-  parse_placements(place2.data, ships2);
-
-  uint8_t board[10][10] = {0};
-  render_placements(ships1, board);
-
-  printf("server: player 1 placements:\n");
-  for (int i = 0; i < 10; i++) {
-    for (int j = 0; j < 10; j++) {
-      printf("%d ", board[j][i]);
-    }
-    printf("\n");
+  while (winner == PLAYER_NONE) {
+    winner = loop(&current_player, player1, player2, board1, board2);
   }
+
+  printf("server: player %d wins!\n", winner);
+  struct packet end_packet = new_packet(END, (unsigned char *)&winner);
+  write_packet(player1.fd, &end_packet);
+  write_packet(player2.fd, &end_packet);
 
   close_player(&player1);
   close_player(&player2);

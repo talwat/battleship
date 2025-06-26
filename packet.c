@@ -16,15 +16,15 @@ const struct {
   uint8_t length;
   const char *name;
 } PACKETS[9] = {
-    {.length = 16, .name = "LOGIN"},
-    {.length = 1, .name = "LOGIN_CONFIRM"},
-    {.length = 16, .name = "SETUP"},
-    {.length = 10, .name = "PLACE"},
-    {.length = 1, .name = "TURN"},
-    {.length = 1, .name = "SELECT"},
-    {.length = 3, .name = "TURN_RESULT"},
-    {.length = 1, .name = "END"},
-    {.length = 0, .name = "QUIT"},
+    {.length = 16, .name = "LOGIN"},        // 0x0
+    {.length = 1, .name = "LOGIN_CONFIRM"}, // 0x1
+    {.length = 16, .name = "SETUP"},        // 0x2
+    {.length = 10, .name = "PLACE"},        // 0x3
+    {.length = 1, .name = "TURN"},          // 0x4
+    {.length = 1, .name = "SELECT"},        // 0x5
+    {.length = 3, .name = "TURN_RESULT"},   // 0x6
+    {.length = 1, .name = "END"},           // 0x7
+    {.length = 0, .name = "QUIT"},          // 0x8
 };
 
 bool parse_placements(unsigned char *data, uint8_t placements[5][3]) {
@@ -51,14 +51,8 @@ struct packet read_packet(int fd) {
   unsigned char *data = malloc(PACKETS[type].length);
   read(fd, data, PACKETS[type].length);
 
-  printf("packet: received data: ");
-  for (int i = 0; i < PACKETS[type].length; i++) {
-    printf("%02x ", data[i]);
-  }
-  printf("\n");
-
   struct packet new = new_packet(type, data);
-  printf("packet: received packet type %d (%s) with length %d\n", new.type, new.name, new.length);
+  //printf("packet: received packet type %d (%s) with length %d\n", new.type, new.name, new.length);
 
   return new;
 }
@@ -75,12 +69,7 @@ struct packet new_packet(int type, unsigned char *data) {
 }
 
 void write_packet(int fd, struct packet *packet) {
-  printf("packet: sending data: ");
-  for (int i = 0; i < packet->length; i++) {
-    printf("%02x ", packet->data[i]);
-  }
-  printf("\n");
-  printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
+  //printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
 
   write(fd, &packet->type, sizeof(packet->type));
   write(fd, packet->data, packet->length);
