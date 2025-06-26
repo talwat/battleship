@@ -35,7 +35,7 @@ This packet is the first sent by the player, specifying their username in ASCII-
 
 Content Length: 1 byte.
 
-This packet is sent by the server to the player right after `LOG_IN`, notifying the player of their ID (either `1` or `2` for now). 
+This packet is sent by the server to the player right after `LOGIN`, notifying the player of their ID (either `1` or `2` for now). 
 
 | Field | Size   |
 | ----- | ------ |
@@ -53,22 +53,21 @@ This packet is sent to both players by the server when it is ready to recieve sh
 
 ### `0x3` - `PLACE`
 
-Content Length: 5 bytes.
+Content Length: 10 bytes.
 
 This packet is sent by each player to the server after `START`.
 It determines where each player wants to put each ships, determined by their leftmost or uppermost coordinate.
 
 | Field        | Size   |
 | ------------ | ------ |
-| `CARRIER`    | 1 Byte |
-| `BATTLESHIP` | 1 Byte |
-| `CRUISER`    | 1 Byte |
-| `SUBMARINE`  | 1 Byte |
-| `DESTROYER`  | 1 Byte |
+| `CARRIER`    | 2 Bytes |
+| `BATTLESHIP` | 2 Bytes |
+| `CRUISER`    | 2 Bytes |
+| `SUBMARINE`  | 2 Bytes |
+| `DESTROYER`  | 2 Bytes |
 
-Each ship location byte has the first bit be `0` if it is horizontal and `1` if it is vertical.
-Then, the next 7 bits dictate the location. Because battleship is played on a 10x10 board,
-there will be three unused bits (`0___0000`).
+Each ship has the first byte be `0` if it is horizontal and `1` if it is vertical.
+Then, the next byte is the position. This is identical to the position of `SELECT`, for instance.
 
 ### `0x4` - `TURN`
 
@@ -92,7 +91,7 @@ This is sent to the server by a player in order for them to select a tile to str
 | ---------- | ------ |
 | `POSITION` | 1 Byte |
 
-Here, `POSITION` is the the first 4 bits determine the x-coordinate (1-10) and the last four bits the y-coordinate (A-J).
+Here, in `POSITION` the lower 4 bits determine the x-coordinate (1-10) and the higher four bits the y-coordinate (A-J).
 
 ### `0x6` - `TURN_RESULT`
 

@@ -2,6 +2,7 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,10 +15,32 @@
 const struct {
   uint8_t length;
   const char *name;
-} PACKETS[2] = {
+} PACKETS[9] = {
     {.length = 16, .name = "LOGIN"},
-    {.length = 1, .name = "LOGIN_CONFIRM"}
+    {.length = 1, .name = "LOGIN_CONFIRM"},
+    {.length = 16, .name = "SETUP"},
+    {.length = 10, .name = "PLACE"},
+    {.length = 1, .name = "TURN"},
+    {.length = 1, .name = "SELECT"},
+    {.length = 3, .name = "TURN_RESULT"},
+    {.length = 1, .name = "END"},
+    {.length = 0, .name = "QUIT"},
 };
+
+bool parse_placements(unsigned char *data, uint8_t placements[5][3]) {
+  for (int i = 0; i < PACKETS[3].length; i+=2) {
+      unsigned char position = data[i+1];
+
+      uint8_t high = (position >> 4) & 0x0F;
+      uint8_t low  = position & 0x0F;
+
+      placements[i/2][0] = data[i];
+      placements[i/2][1] = low;
+      placements[i/2][2] = high;
+  }
+
+  return true;
+}
 
 /* Reads a packet from the file descriptor. */
 struct packet read_packet(int fd) {
