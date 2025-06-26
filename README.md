@@ -107,21 +107,11 @@ This is sent to both players to notify them whether the previous strike was succ
 
 - `PLAYER` is the ID of the player who's turn it was.
 - `POSITION` is in the same as in the `SELECT` packet.
-- `RESULT` can either be 0 for a miss, 1 for a hit, and 2 for a sink.
+- `RESULT` can either be 0 for a miss, 1 for a hit, 2 for a sink, and 3 for a win.
 
-### `0x7` - `END`
-
-Content Length: 1 byte.
-
-This is sent to both players when the game has ended, and one has won.
-This will either be sent after a TURN_RESULT, or after one player quits.
-
-| Field      | Size   |
-| ---------- | ------ |
-| `WINNER`   | 1 Byte |
-
-### `0x8` - `QUIT`
+### `0x7` - `QUIT`
 
 Content Length: 0 bytes.
 
 This can be sent by a player at any time, and will end the game right after it is sent to the server.
+In this case, the server will then send back the `QUIT` packet to both clients, indicating that a player quit.

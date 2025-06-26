@@ -25,9 +25,10 @@ enum Player {
  * @brief Represents the possible outcomes of a player's turn in the Battleship game.
  */
 enum TurnResult {
-  MISS = 0,
-  HIT = 1,
-  SINK = 2,
+  TURN_MISS = 0,
+  TURN_HIT = 1,
+  TURN_SINK = 2,
+  TURN_WIN = 3,
 };
 
 extern const uint8_t SHIP_LENGTHS[5];
@@ -41,6 +42,13 @@ enum Orientation {
   VERTICAL = 1
 };
 
+enum Tile {
+  TILE_EMPTY = 0,
+  TILE_SHIP = 1,
+  TILE_HIT = 2,
+  TILE_MISS = 3
+};
+
 /**
  * @struct ship
  * @brief Represents a ship's position and orientation on the Battleship game board.
@@ -52,6 +60,8 @@ struct ship {
   enum Orientation orientation;
   uint8_t x;
   uint8_t y;
+  int8_t coordinates[5]; // This holds either the x or y coordinates of the ship's cells, depending on it's orientation.
+  bool sunk;
 };
 
 /**
@@ -64,6 +74,8 @@ struct ship {
  * @param placements An array of ship structures representing the placements of ships.
  * @param board A 10x10 boolean array representing the game board. Cells occupied by ships are set to true.
  */
-void render_placements(struct ship placements[5], bool board[10][10]);
+void render_placements(struct ship placements[5], enum Tile board[10][10]);
+
+void render_board(enum Tile board[10][10]);
 
 #endif

@@ -66,12 +66,73 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
  * @param y The y-coordinate (row) of the attack (0-based index).
  * @return HIT if a ship is present at the specified coordinates, otherwise MISS.
  */
-enum TurnResult process_turn(bool board[10][10], int x, int y) {
-  if (board[y][x]) {
-    return HIT;
+enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int x, int y) {
+  if (board[x][y] == TILE_SHIP) {
+    board[x][y] = TILE_HIT;
+
+    bool sunk = false; // Whether the player sunk a ship this turn
+    int sink_count = 0;
+
+    // Calculate if any ship has been sunk
+    for (int i = 0; i < 5; i++) {
+      if (ships[i].sunk) {
+        sink_count++;
+        continue; // Skip already sunk ships
+      }
+
+      int hit_count = 0;
+      for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
+        int x_pos = ships[i].x;
+        int y_pos = ships[i].y;
+
+        if (ships[i].orientation == HORIZONTAL) {
+          x_pos += j;
+        } else {
+          y_pos += j;
+        }
+
+        if (board[x_pos][y_pos] == TILE_HIT) {
+          hit_count++;
+        }
+      }
+
+      if (hit_count == SHIP_LENGTHS[i]) {
+        sink_count++;
+        sunk = true;
+        ships[i].sunk = true;
+      } else {
+        ships[i].sunk = false;
+      }
+    }
+
+    if (sink_count == 5) {
+      return TURN_WIN;
+    }
+
+    if (sunk) {
+      return TURN_SINK;
+    }
+
+    return TURN_HIT;
   }
-  return MISS;
+
+  if (board[x][y] == TILE_EMPTY) {
+    board[x][y] = TILE_MISS;
+    return TURN_MISS;
+  }
+
+  return TURN_MISS;
 }
+
+struct game {
+  enum Player current_player;
+  struct ship ships1[5];
+  struct ship ships2[5];
+  struct client player1;
+  struct client player2;
+  enum Tile board1[10][10];
+  enum Tile board2[10][10];
+};
 
 /**
  * @brief Main game loop for the Battleship server, handling player turns and game state.
@@ -88,20 +149,20 @@ enum TurnResult process_turn(bool board[10][10], int x, int y) {
  * @param board2         10x10 boolean array representing player 2's board.
  * @return enum Player   The winner of the game (PLAYER1 or PLAYER2).
  */
-enum Player loop(enum Player *current_player, struct client player1, struct client player2, bool board1[10][10], bool board2[10][10]) {
+enum Player loop(struct game game) {
   enum Player winner = PLAYER_NONE;
 
   while (winner == PLAYER_NONE) {
-    struct packet turn = new_packet(TURN, (unsigned char *)current_player);
-    write_packet(player1.fd, &turn);
-    write_packet(player2.fd, &turn);
+    struct packet turn = new_packet(TURN, (unsigned char *)&game.current_player);
+    write_packet(game.player1.fd, &turn);
+    write_packet(game.player2.fd, &turn);
 
     struct packet select;
-    printf("server: waiting for player %d to select a target\n", *current_player);
-    if (*current_player == PLAYER1) {
-      select = read_packet(player1.fd);
+    printf("server: waiting for player %d to select a target\n", game.current_player);
+    if (game.current_player == PLAYER1) {
+      select = read_packet(game.player1.fd);
     } else {
-      select = read_packet(player2.fd);
+      select = read_packet(game.player2.fd);
     }
 
     uint8_t target = select.data[0];
@@ -113,27 +174,35 @@ enum Player loop(enum Player *current_player, struct client player1, struct clie
       continue;
     }
 
-    enum TurnResult result = MISS;
+    enum TurnResult result = TURN_MISS;
 
-    printf("server: player %d selected target (%d, %d)\n", *current_player, x, y);
-    if (*current_player == PLAYER1) {
-      result = process_turn(board2, x, y);
+    printf("server: player %d selected target (%d, %c)\n", game.current_player, x + 1, 'A' + y);
+    if (game.current_player == PLAYER1) {
+      result = process_turn(game.ships2, game.board2, x, y);
     } else {
-      result = process_turn(board1, x, y);
+      result = process_turn(game.ships1, game.board1, x, y);
     }
 
-    uint8_t data[3] = {*current_player, target, result};
+    uint8_t data[3] = {game.current_player, target, result};
     struct packet turn_result = new_packet(TURN_RESULT, data);
-    write_packet(player1.fd, &turn_result);
-    write_packet(player2.fd, &turn_result);
+    write_packet(game.player1.fd, &turn_result);
+    write_packet(game.player2.fd, &turn_result);
 
-    if (result != HIT) {
-      if (*current_player == PLAYER1) {
-        *current_player = PLAYER2;
+    if (result == TURN_WIN) {
+      winner = game.current_player;
+      break;
+    }
+
+    if (result != TURN_HIT && result != TURN_SINK) {
+      if (game.current_player == PLAYER1) {
+        game.current_player = PLAYER2;
       } else {
-        *current_player = PLAYER1;
+        game.current_player = PLAYER1;
       }
     }
+
+    render_board(game.board1);
+    render_board(game.board2);
   }
 
   return winner;
@@ -148,23 +217,21 @@ enum Player loop(enum Player *current_player, struct client player1, struct clie
  * @param board1  The 10x10 board for player 1, to be filled with ship placements.
  * @param board2  The 10x10 board for player 2, to be filled with ship placements.
  */
-void get_placements(struct client player1, struct client player2, bool board1[10][10], bool board2[10][10]) {
-  struct packet setup1 = new_packet(SETUP, (unsigned char *)player2.name);
-  write_packet(player1.fd, &setup1);
-  struct packet setup2 = new_packet(SETUP, (unsigned char *)player1.name);
-  write_packet(player2.fd, &setup2);
+void get_placements(struct game *game) {
+  struct packet setup1 = new_packet(SETUP, (unsigned char *)game->player2.name);
+  write_packet(game->player1.fd, &setup1);
+  struct packet setup2 = new_packet(SETUP, (unsigned char *)game->player1.name);
+  write_packet(game->player2.fd, &setup2);
 
   printf("server: waiting for placements\n");
-  struct packet place1 = read_packet(player1.fd);
-  struct packet place2 = read_packet(player2.fd);
+  struct packet place1 = read_packet(game->player1.fd);
+  struct packet place2 = read_packet(game->player2.fd);
 
-  struct ship ships1[5] = {0};
-  struct ship ships2[5] = {0};
-  parse_placements(place1.data, ships1);
-  parse_placements(place2.data, ships2);
+  parse_placements(place1.data, game->ships1);
+  parse_placements(place2.data, game->ships2);
 
-  render_placements(ships1, board1);
-  render_placements(ships1, board2);
+  render_placements(game->ships1, game->board1);
+  render_placements(game->ships1, game->board2);
 }
 
 /**
@@ -215,15 +282,23 @@ int main(int argc, char const *argv[]) {
       wait_for_client(2, fd, (struct sockaddr *)&address, &address_len);
 
   printf("server: all players connected, sending setup packets\n");
-  bool board1[10][10] = {0};
-  bool board2[10][10] = {0};
-  get_placements(player1, player2, board1, board2);
 
-  enum Player current_player = PLAYER1;
+  struct game game = {
+      .current_player = PLAYER1,
+      .ships1 = {},
+      .ships2 = {},
+      .player1 = player1,
+      .player2 = player2,
+      .board1 = {{0}},
+      .board2 = {{0}},
+  };
+
+  get_placements(&game);
+
   enum Player winner = PLAYER_NONE;
 
   while (winner == PLAYER_NONE) {
-    winner = loop(&current_player, player1, player2, board1, board2);
+    winner = loop(game);
   }
 
   printf("server: player %d wins!\n", winner);

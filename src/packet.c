@@ -24,8 +24,7 @@ const struct {
     {.length = 1, .name = "TURN"},          // 0x4
     {.length = 1, .name = "SELECT"},        // 0x5
     {.length = 3, .name = "TURN_RESULT"},   // 0x6
-    {.length = 1, .name = "END"},           // 0x7
-    {.length = 0, .name = "QUIT"},          // 0x8
+    {.length = 0, .name = "QUIT"},          // 0x7
 };
 
 bool parse_placements(unsigned char *data, struct ship placements[5]) {
@@ -35,9 +34,26 @@ bool parse_placements(unsigned char *data, struct ship placements[5]) {
       uint8_t high = (position >> 4) & 0x0F;
       uint8_t low  = position & 0x0F;
 
-      placements[i/2].orientation = data[i];
-      placements[i/2].x = low;
-      placements[i/2].y = high;
+      struct ship *ship = &placements[i/2];
+
+      ship->orientation = data[i];
+      ship->x = low;
+      ship->y = high;
+      
+      uint8_t ship_length = SHIP_LENGTHS[i/2];
+
+      for (int j = 0; j < 5; j++) {
+          if (j >= ship_length) {
+              ship->coordinates[j] = -1;
+              continue;
+          }
+
+          if (ship->orientation == HORIZONTAL) {
+              ship->coordinates[j] = ship->x + j;
+          } else {
+              ship->coordinates[j] = ship->y + j;
+          }
+      }
   }
 
   return true;

@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <ctype.h>
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,13 +12,17 @@
 
 #define PORT 8080
 
+uint8_t merge(uint8_t lower, uint8_t upper) {
+  return ((upper & 0x0F) << 4) | (lower & 0x0F);
+}
+
 void serialize_placements(unsigned char *data, uint8_t placements[5][3]) {
   for (int i = 0; i < 5; i++) {
     uint8_t direction = placements[i][0];
     uint8_t x = placements[i][1];
     uint8_t y = placements[i][2];
 
-    uint8_t position = ((y & 0x0F) << 4) | (x & 0x0F);
+    uint8_t position = merge(x, y);
 
     data[i * 2] = direction;
     data[i * 2 + 1] = position;
@@ -72,7 +77,7 @@ void handle(int connection) {
       printf("client: select a target y (A-J): ");
       scanf(" %c", &y);
 
-      unsigned char position = (((y - 'a') & 0x0F) << 4) | ((x - 1) & 0x0F);
+      unsigned char position = merge(x - 1, toupper(y) - 'A');
       struct packet select = new_packet(SELECT, &position);
       write_packet(connection, &select);
     } else {
@@ -82,12 +87,17 @@ void handle(int connection) {
     struct packet turn_result = read_packet(connection);
     enum TurnResult result = turn_result.data[2];
 
-    if (result == HIT) {
+    if (result == TURN_HIT) {
       printf("client: hit!\n");
-    } else if (result == MISS) {
+    } else if (result == TURN_MISS) {
       printf("client: miss!\n");
-    } else if (result == SINK) {
+    } else if (result == TURN_SINK) {
       printf("client: sink!\n");
+    } else if (result == TURN_WIN) {
+      printf("client: win!\n");
+      break;
+    } else {
+      printf("client: unknown turn result %d\n", result);
     }
   }
 }
