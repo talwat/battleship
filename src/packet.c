@@ -18,15 +18,16 @@ const bool packet_debug = false;
 const struct {
   uint8_t length;
   const char *name;
-} PACKETS[8] = {
-    {.length = 16, .name = "LOGIN"},        // 0x0
-    {.length = 1, .name = "LOGIN_CONFIRM"}, // 0x1
-    {.length = 16, .name = "SETUP"},        // 0x2
-    {.length = 10, .name = "PLACE"},        // 0x3
-    {.length = 1, .name = "TURN"},          // 0x4
-    {.length = 1, .name = "SELECT"},        // 0x5
-    {.length = 3, .name = "TURN_RESULT"},   // 0x6
-    {.length = 0, .name = "QUIT"},          // 0x7
+} PACKETS[9] = {
+    {.length = 0,  .name = "NONE"},          // 0x0
+    {.length = 16, .name = "LOGIN"},         // 0x1
+    {.length = 1,  .name = "LOGIN_CONFIRM"}, // 0x2
+    {.length = 16, .name = "SETUP"},         // 0x3
+    {.length = 10, .name = "PLACE"},         // 0x4
+    {.length = 1,  .name = "TURN"},          // 0x5
+    {.length = 1,  .name = "SELECT"},        // 0x6
+    {.length = 3,  .name = "TURN_RESULT"},   // 0x7
+    {.length = 0,  .name = "QUIT"},          // 0x8
 };
 
 bool parse_placements(unsigned char *data, struct ship placements[5]) {
@@ -62,13 +63,16 @@ bool parse_placements(unsigned char *data, struct ship placements[5]) {
 }
 
 struct packet read_packet(int fd) {
-  enum PacketType type;
+  PacketType type;
   read(fd, &type, 1);
 
   // TODO: Make this implementation less terrible.
   if (type == QUIT) {
     exit(EXIT_SUCCESS);
   }
+
+  if (packet_debug)
+    printf("packet: received packet type %d (%s) with length %d\n", type, PACKETS[type].name, PACKETS[type].length);
 
   // TODO: memory leak not good.
   unsigned char *data = malloc(PACKETS[type].length);
@@ -77,9 +81,11 @@ struct packet read_packet(int fd) {
   struct packet new = new_packet(type, data);
   
   if (packet_debug) {
-    printf("packet: received packet type %d\n", new.type);
-    printf("packet: %d\n", new.data[0]);
-    printf("packet: received packet type %d (%s) with length %d\n", new.type, new.name, new.length);
+    printf("        ");
+    for (int i = 0; i < new.length; i++) {
+      printf("%02x ", new.data[i]);
+    }
+    printf("\n");
   }
   return new;
 }
@@ -98,6 +104,11 @@ struct packet new_packet(int type, unsigned char *data) {
 void write_packet(int fd, struct packet *packet) {
   if (packet_debug) {
     printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
+    printf("        ");
+    for (int i = 0; i < packet->length; i++) {
+      printf("%02x ", packet->data[i]);
+    }
+    printf("\n");
   }
   write(fd, &packet->type, sizeof(packet->type));
   write(fd, packet->data, packet->length);

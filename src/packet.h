@@ -9,33 +9,35 @@
 extern const bool packet_debug;
 
 /**
+ * @enum PacketType
+ *
+ * Defines the various packet types that can be sent or received.
+ */
+enum PacketType {
+  NONE = 0x0,
+  LOGIN = 0x1,
+  LOGIN_CONFIRM = 0x2,
+  SETUP = 0x3,
+  PLACE = 0x4,
+  TURN = 0x5,
+  SELECT = 0x6,
+  TURN_RESULT = 0x7,
+  QUIT = 0x8,
+};
+
+typedef uint8_t PacketType;
+
+/**
  * @struct packet
  *
  * Encapsulates the information required for a packet,
  * including its type, length, name, and a pointer to the data payload.
  */
 struct packet {
-  uint8_t type;
+  PacketType type;
   uint8_t length;
   const char *name;
   unsigned char *data;
-};
-
-/**
- * @enum PacketType
- *
- * Defines the various packet types that can be sent or received.
- */
-enum PacketType {
-  LOGIN = 0x0,
-  LOGIN_CONFIRM = 0x1,
-  SETUP = 0x2,
-  PLACE = 0x3,
-  TURN = 0x4,
-  SELECT = 0x5,
-  TURN_RESULT = 0x6,
-  END = 0x7,
-  QUIT = 0x8,
 };
 
 /**

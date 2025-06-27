@@ -32,3 +32,5 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
  * @param player Pointer to the client structure representing the player whose connection should be closed.
  */
 void close_player(struct client *player);
+
+int init(int *fd, struct sockaddr_in *address, socklen_t address_len);

@@ -17,11 +17,17 @@ Each packet will begin with a header, as such:
 
 | Field         | Size   |
 | ------------- | ------ |
-| `PACKET_TYPE` | 1 Byte |
+| `PACKET_TYPE` | 1 byte |
 
 For now, it's literally just a single byte that determines what the data portion of the packet will look like.
 
-### `0x0` - `LOGIN`
+### `0x0` - `NONE`
+
+Content Length: 0 bytes.
+
+This packet should never be sent, and if it has been sent, then the socket was probably closed without prior notice.
+
+### `0x1` - `LOGIN`
 
 Content Length: 16 bytes.
 
@@ -29,9 +35,9 @@ This packet is the first sent by the player, specifying their username in ASCII-
 
 | Field      | Size     |
 | ---------- | -------- |
-| `USERNAME` | 16 Bytes |
+| `USERNAME` | 16 bytes |
 
-### `0x1` - `LOGIN_CONFIRM`
+### `0x2` - `LOGIN_CONFIRM`
 
 Content Length: 1 byte.
 
@@ -39,9 +45,9 @@ This packet is sent by the server to the player right after `LOGIN`, notifying t
 
 | Field | Size   |
 | ----- | ------ |
-| `ID`  | 1 Byte |
+| `ID`  | 1 byte |
 
-### `0x2` - `SETUP`
+### `0x3` - `SETUP`
 
 Content Length: 16 bytes.
 
@@ -49,9 +55,9 @@ This packet is sent to both players by the server when it is ready to recieve sh
 
 | Field               | Size     |
 | ------------------- | -------- |
-| `OPPONENT_USERNAME` | 16 Bytes |
+| `OPPONENT_USERNAME` | 16 bytes |
 
-### `0x3` - `PLACE`
+### `0x4` - `PLACE`
 
 Content Length: 10 bytes.
 
@@ -60,16 +66,16 @@ It determines where each player wants to put each ships, determined by their lef
 
 | Field        | Size   |
 | ------------ | ------ |
-| `CARRIER`    | 2 Bytes |
-| `BATTLESHIP` | 2 Bytes |
-| `CRUISER`    | 2 Bytes |
-| `SUBMARINE`  | 2 Bytes |
-| `DESTROYER`  | 2 Bytes |
+| `CARRIER`    | 2 bytes |
+| `BATTLESHIP` | 2 bytes |
+| `CRUISER`    | 2 bytes |
+| `SUBMARINE`  | 2 bytes |
+| `DESTROYER`  | 2 bytes |
 
 Each ship has the first byte be `0` if it is horizontal and `1` if it is vertical.
 Then, the next byte is the position. This is identical to the position of `SELECT`, for instance.
 
-### `0x4` - `TURN`
+### `0x5` - `TURN`
 
 Content Length: 1 byte.
 
@@ -77,11 +83,11 @@ This is sent to both player by the server, informing them of who's turn it is.
 
 | Field      | Size   |
 | ---------- | ------ |
-| `PLAYER`   | 1 Byte |
+| `PLAYER`   | 1 byte |
 
 `PLAYER` is just the ID of the active player.
 
-### `0x5` - `SELECT`
+### `0x6` - `SELECT`
 
 Content Length: 1 byte.
 
@@ -89,11 +95,11 @@ This is sent to the server by a player in order for them to select a tile to str
 
 | Field      | Size   |
 | ---------- | ------ |
-| `POSITION` | 1 Byte |
+| `POSITION` | 1 byte |
 
 Here, in `POSITION` the lower 4 bits determine the x-coordinate (1-10) and the higher four bits the y-coordinate (A-J).
 
-### `0x6` - `TURN_RESULT`
+### `0x7` - `TURN_RESULT`
 
 Content Length: 3 bytes.
 
@@ -101,15 +107,15 @@ This is sent to both players to notify them whether the previous strike was succ
 
 | Field      | Size   |
 | ---------- | ------ |
-| `PLAYER`   | 1 Byte |
-| `POSITION` | 1 Byte |
-| `RESULT`   | 1 Byte |
+| `PLAYER`   | 1 byte |
+| `POSITION` | 1 byte |
+| `RESULT`   | 1 byte |
 
 - `PLAYER` is the ID of the player who's turn it was.
 - `POSITION` is in the same as in the `SELECT` packet.
 - `RESULT` can either be 0 for a miss, 1 for a hit, 2 for a sink, and 3 for a win.
 
-### `0x7` - `QUIT`
+### `0x8` - `QUIT`
 
 Content Length: 0 bytes.
 
