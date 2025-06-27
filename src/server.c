@@ -183,18 +183,18 @@ enum Player loop(struct game_instance game) {
 
     const char *result_str;
     switch (result) {
-      case TURN_MISS:
-        result_str = "miss";
-        break;
-      case TURN_HIT:  
-        result_str = "hit";
-        break;
-      case TURN_SINK:
-        result_str = "sink";
-        break;
-      case TURN_WIN:
-        result_str = "win";
-        break;
+    case TURN_MISS:
+      result_str = "miss";
+      break;
+    case TURN_HIT:
+      result_str = "hit";
+      break;
+    case TURN_SINK:
+      result_str = "sink";
+      break;
+    case TURN_WIN:
+      result_str = "win";
+      break;
     }
 
     printf("server: player %d struck target (%d, %c) with result %d (%s)\n", game.current_player, x + 1, 'A' + y, result, result_str);

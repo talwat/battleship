@@ -19,7 +19,7 @@ void SetThroat(unsigned char _throat);
 void EnableSingmode();
 void EnableDebug();
 int SAMMain();
-char* GetBuffer();
+char *GetBuffer();
 int GetBufferLength();
 int TextToPhonemes(unsigned char *input);
 
