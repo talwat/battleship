@@ -33,20 +33,6 @@ void remove_trailing_spaces(char *s, int len) {
   }
 }
 
-int speak_text(const char *text) {
-  char input[256] = {0};
-  strncpy(input, text, 255);
-
-  if (!TextToPhonemes((unsigned char *)input))
-    return 1;
-
-  SetInput(input);
-  SAMMain();
-  OutputSound();
-
-  return 0;
-}
-
 void serialize_placements(unsigned char *data, struct ship *ships) {
   for (int i = 0; i < 5; i++) {
     uint8_t direction = ships[i].orientation;
@@ -88,7 +74,8 @@ void endwin_void() {
   endwin();
 }
 
-void select_server(char *username, char *address) {
+// Whether to continue running the program.
+bool select_server(char *username, char *address) {
   int width, height;
   getmaxyx(stdscr, height, width);
 
@@ -154,7 +141,7 @@ void select_server(char *username, char *address) {
       free_field(field[0]);
       free_field(field[1]);
       delwin(win);
-      return;
+      return true;
     case KEY_UP:
       form_driver(setup, REQ_PREV_FIELD);
       form_driver(setup, REQ_END_LINE);
@@ -169,6 +156,9 @@ void select_server(char *username, char *address) {
     case KEY_RIGHT:
       form_driver(setup, REQ_NEXT_CHAR);
       break;
+    case ctrl('c'):
+      exit(0);
+      return false;
     default:
       form_driver(setup, ch);
       break;
@@ -324,17 +314,16 @@ void select_ship_placement(int *select_x, int *select_y, int index, WINDOW **boa
           .sunk = false,
       };
       return;
+    case ctrl('c'):
+      exit(0);
+      break;
     }
   } while (1);
 }
 
 int main() {
-  if (SDL_Init(SDL_INIT_AUDIO) < 0) {
-    fprintf(stderr, "error: SDL_Init failed: %s\n", SDL_GetError());
-    exit(EXIT_FAILURE);
-  }
-
-  atexit(SDL_Quit);
+  InitSAMAudio();
+  atexit(CloseSAMAudio);
   atexit(endwin_void);
 
   // Initialize ncurses
@@ -343,11 +332,14 @@ int main() {
   noecho();
   keypad(stdscr, TRUE);
   curs_set(1);
-
+  
   char username[16];
   char address[16];
-  select_server(username, address);
-
+  SpeakSAM("WELCOME.");
+  if (!select_server(username, address)) {
+    exit(0);
+  }
+  SpeakSAM("SERVER SELECTED.");
   def_prog_mode();
   endwin();
 
@@ -357,14 +349,14 @@ int main() {
 
   unsigned char *opponent_name = setup.data;
   printf("client: opponent name is %s\n", opponent_name);
-
+  
   reset_prog_mode();
-  speak_text("BEGIN.");
-
+  
   WINDOW *sidebar, *board, *lower;
   int board_x, board_y;
   init_main_ui(&sidebar, &board, &lower, &board_x, &board_y);
-
+  SpeakSAM("PLACE YOUR SHIPS.");
+  
   // Move cursor to the top-left of the board area
   wmove(board, board_y, board_x);
   wrefresh(lower);
