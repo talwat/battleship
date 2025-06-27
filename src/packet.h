@@ -6,6 +6,8 @@
 #ifndef PACKET_H
 #define PACKET_H
 
+extern const bool packet_debug;
+
 /**
  * @struct packet
  *

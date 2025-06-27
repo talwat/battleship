@@ -249,7 +249,7 @@ void get_placements(struct game_instance *game) {
   parse_placements(place2.data, game->ships2);
 
   render_placements(game->ships1, game->board1);
-  render_placements(game->ships1, game->board2);
+  render_placements(game->ships2, game->board2);
 }
 
 /**

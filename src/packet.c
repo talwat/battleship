@@ -11,12 +11,14 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+const bool packet_debug = false;
+
 // clang-format off
 /* Contains a list of packet definitions. */
 const struct {
   uint8_t length;
   const char *name;
-} PACKETS[9] = {
+} PACKETS[8] = {
     {.length = 16, .name = "LOGIN"},        // 0x0
     {.length = 1, .name = "LOGIN_CONFIRM"}, // 0x1
     {.length = 16, .name = "SETUP"},        // 0x2
@@ -60,16 +62,25 @@ bool parse_placements(unsigned char *data, struct ship placements[5]) {
 }
 
 struct packet read_packet(int fd) {
-  uint8_t type;
-  read(fd, &type, sizeof(type));
+  enum PacketType type;
+  read(fd, &type, 1);
+
+  // TODO: Make this implementation less terrible.
+  if (type == QUIT) {
+    exit(EXIT_SUCCESS);
+  }
 
   // TODO: memory leak not good.
   unsigned char *data = malloc(PACKETS[type].length);
   read(fd, data, PACKETS[type].length);
 
   struct packet new = new_packet(type, data);
-  //printf("packet: received packet type %d (%s) with length %d\n", new.type, new.name, new.length);
-
+  
+  if (packet_debug) {
+    printf("packet: received packet type %d\n", new.type);
+    printf("packet: %d\n", new.data[0]);
+    printf("packet: received packet type %d (%s) with length %d\n", new.type, new.name, new.length);
+  }
   return new;
 }
 
@@ -85,8 +96,9 @@ struct packet new_packet(int type, unsigned char *data) {
 }
 
 void write_packet(int fd, struct packet *packet) {
-  //printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
-
+  if (packet_debug) {
+    printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
+  }
   write(fd, &packet->type, sizeof(packet->type));
   write(fd, packet->data, packet->length);
 }
