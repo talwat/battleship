@@ -335,11 +335,11 @@ int main() {
   
   char username[16];
   char address[16];
-  SpeakSAM("WELCOME.");
+  SpeakSAM(48, "HI.");
   if (!select_server(username, address)) {
     exit(0);
   }
-  SpeakSAM("SERVER SELECTED.");
+  SpeakSAM(48, "SERVER SELECTED.");
   def_prog_mode();
   endwin();
 
@@ -355,7 +355,7 @@ int main() {
   WINDOW *sidebar, *board, *lower;
   int board_x, board_y;
   init_main_ui(&sidebar, &board, &lower, &board_x, &board_y);
-  SpeakSAM("PLACE YOUR SHIPS.");
+  SpeakSAM(48, "PLACE YOUR SHIPS.");
   
   // Move cursor to the top-left of the board area
   wmove(board, board_y, board_x);

@@ -37,9 +37,10 @@ void CloseSAMAudio();
  * it to the SDL audio device. Playback happens in the background without blocking
  * the calling thread. The function returns as soon as the audio is queued.
  *
+ * @param volume Integer from 0 to 128.
  * @param text Input null-terminated string to speak.
  */
-void SpeakSAM(char *text);
+void SpeakSAM(int volume, char *text);
 
 void SetInput(char *_input);
 void SetSpeed(unsigned char _speed);
