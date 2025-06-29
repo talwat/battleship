@@ -66,6 +66,8 @@ struct ship {
   bool sunk;
 };
 
+void render_ship(uint8_t x, uint8_t y, enum Orientation orientation, uint8_t length, enum Tile board[10][10]);
+
 /**
  * @brief Renders ship placements onto the game board.
  *

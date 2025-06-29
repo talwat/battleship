@@ -17,8 +17,14 @@ struct UI {
     int cursor_y;
 };
 
+enum CursorResult {
+    CURSOR_CONTINUE,
+    CURSOR_QUIT,
+    CURSOR_SELECT
+};
+
 bool select_server(char *username, char *address);
 void init_ui(struct UI *ui);
 void render_board_ui(struct UI *ui);
-int cursor_input(struct UI *ui, int input);
+enum CursorResult cursor_input(struct UI *ui, int input, enum Orientation *orientation);
 void move_cursor(struct UI *ui, int x, int y);

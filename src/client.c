@@ -18,6 +18,9 @@
 #include "packet.h"
 #include "shared.h"
 
+// "Cruiser" and "submarine" were too hard for SAM to say...
+const char* SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
+
 uint8_t merge(uint8_t lower, uint8_t upper) {
   return ((upper & 0x0F) << 4) | (lower & 0x0F);
 }
@@ -112,18 +115,61 @@ int main() {
   wrefresh(ui.board_win);
 
   SpeakSAM(48, "PLACE YOUR VESSELS.");
+
+  enum Orientation orientation = HORIZONTAL;
+
   struct ship ships[5];
   for (int i = 0; i < 5; i++) {
     ships[i].defined = 0;
     while (!(ships[i].defined)) {
       render_board_ui(&ui);
-      if (cursor_input(&ui, getch()) != 0) {
-        exit(0);
+
+      for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
+        if (orientation == HORIZONTAL) {
+          move_cursor(&ui, ui.cursor_x + j, ui.cursor_y);
+          waddch(ui.board_win, 'S');
+        } else {
+          move_cursor(&ui, ui.cursor_x, ui.cursor_y + j);
+          waddch(ui.board_win, 'S');
+        }
       }
+
+      move_cursor(&ui, ui.cursor_x, ui.cursor_y);
       wrefresh(ui.board_win);
+
+      enum CursorResult result = cursor_input(&ui, getch(), &orientation);
+      switch (result) {
+      case CURSOR_QUIT:
+        exit(EXIT_SUCCESS);
+        return 0;
+      case CURSOR_SELECT:
+        ships[i] = (struct ship){
+            .coordinates = {},
+            .defined = true,
+            .orientation = HORIZONTAL,
+            .sunk = false,
+            .x = ui.cursor_x,
+            .y = ui.cursor_y,
+        };
+
+        render_placements(ships, ui.board_data);
+        wrefresh(ui.board_win);
+
+        SpeakSAM(48, SHIP_NAMES[i]);
+        break;
+      }
+
+      if (orientation == HORIZONTAL && ui.cursor_x > 10 - SHIP_LENGTHS[i])
+        ui.cursor_x = 10 - SHIP_LENGTHS[i];
+      
+      if (orientation == VERTICAL && ui.cursor_y > 10 - SHIP_LENGTHS[i])
+        ui.cursor_y = 10 - SHIP_LENGTHS[i];
     }
+
+    render_board_ui(&ui);
+    move_cursor(&ui, ui.cursor_x, ui.cursor_y);
+    wrefresh(ui.board_win);
   }
-  getch();
 
   return 0;
 }

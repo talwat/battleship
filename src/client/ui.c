@@ -148,7 +148,7 @@ void init_ui(struct UI *ui) {
 
   refresh();
 
-  move_cursor(ui, 0, 0);
+  move_cursor(ui, ui->cursor_x, ui->cursor_y);
 
   wrefresh(ui->board_win);
   wrefresh(ui->lower_win);
@@ -183,7 +183,7 @@ void render_board_ui(struct UI *ui) {
   }
 }
 
-int cursor_input(struct UI *ui, int input) {
+enum CursorResult cursor_input(struct UI *ui, int input, enum Orientation *orientation) {
   switch (input) {
   case KEY_UP:
     if (ui->cursor_y > 0)
@@ -201,10 +201,19 @@ int cursor_input(struct UI *ui, int input) {
     if (ui->cursor_x < 9)
       ui->cursor_x++;
     break;
+  case 'r':
+  case 'R':
+    if (*orientation == HORIZONTAL)
+      *orientation = VERTICAL;
+    else
+      *orientation = HORIZONTAL;
+    break;
   case ctrl('c'):
-    return 1;
+    return CURSOR_QUIT;
+  case KEY_ENTER:
+  case 10:
+    return CURSOR_SELECT;
   }
 
-  wmove(ui->board_win, ui->cursor_y + ui->board_y, (ui->cursor_x * 2) + ui->board_x);
-  return 0;
+  return CURSOR_CONTINUE;
 }

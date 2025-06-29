@@ -15,6 +15,10 @@ void empty_board(enum Tile board[10][10]) {
 
 void render_placements(struct ship ships[5], enum Tile board[10][10]) {
   for (int i = 0; i < 5; i++) {
+    if (!ships[i].defined) {
+      break;
+    }
+
     uint8_t length = SHIP_LENGTHS[i];
     uint8_t x = ships[i].x;
     uint8_t y = ships[i].y;
