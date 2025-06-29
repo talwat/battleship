@@ -116,137 +116,95 @@ bool select_server(char *username, char *address) {
   return true;
 }
 
-void init_main_ui(WINDOW **sidebar, WINDOW **board, WINDOW **lower, int *board_x, int *board_y) {
+void move_cursor(struct UI *ui, int x, int y) {
+  wmove(ui->board_win, y + ui->board_y, (x * 2) + ui->board_x);
+}
+
+void init_ui(struct UI *ui) {
+  empty_board(ui->board_data);
+  ui->cursor_x = 0;
+  ui->cursor_y = 0;
+
   int width, height;
   getmaxyx(stdscr, height, width);
   box(stdscr, 0, 0);
 
   const int sidebar_width = 31;
-  *sidebar = subwin(stdscr, height, sidebar_width, 0, 0);
-  box(*sidebar, 0, 0);
+  ui->sidebar_win = subwin(stdscr, height, sidebar_width, 0, 0);
+  box(ui->sidebar_win, 0, 0);
 
   int board_window_height = height - (height >> 1) + 1;
   int board_window_width = width - sidebar_width;
   int lower_window_height = (height >> 1) - 1;
 
-  *board = newwin(board_window_height, board_window_width, 0, sidebar_width);
-  *board_y = (board_window_height - 10) / 2;
-  *board_x = (board_window_width - 20) / 2 + 1;
-  box(*board, 0, 0);
+  ui->board_win = newwin(board_window_height, board_window_width, 0, sidebar_width);
+  ui->board_y = (board_window_height - 10) / 2;
+  ui->board_x = (board_window_width - 20) / 2 + 1;
+  box(ui->board_win, 0, 0);
+  render_board_ui(ui);
 
-  *lower = newwin(lower_window_height, width - sidebar_width, board_window_height, sidebar_width);
-  box(*lower, 0, 0);
+  ui->lower_win = newwin(lower_window_height, width - sidebar_width, board_window_height, sidebar_width);
+  box(ui->lower_win, 0, 0);
 
   refresh();
+
+  move_cursor(ui, 0, 0);
+
+  wrefresh(ui->board_win);
+  wrefresh(ui->lower_win);
 }
 
-void select_ship_placement(int *select_x, int *select_y, int index, WINDOW **board, int board_x, int board_y, struct ship *ships) {
-  int orientation = HORIZONTAL;
-  int length = SHIP_LENGTHS[index];
+void render_board_ui(struct UI *ui) {
+  for (int y = 0; y < 10; y++) {
+    for (int x = 0; x < 10; x++) {
+      move_cursor(ui, x, y);
 
-  do {
-    // Draw plain board.
-    for (int y = 0; y < 10; y++) {
-      for (int x = 0; x < 10; x++) {
-        wmove(*board, y + board_y, (x * 2) + board_x);
-        waddch(*board, '.');
+      char c;
+      switch (ui->board_data[x][y]) {
+      case TILE_EMPTY:
+        c = '.';
+        break;
+      case TILE_SHIP_HORIZONTAL:
+        c = '-';
+        break;
+      case TILE_SHIP_VERTICAL:
+        c = '|';
+        break;
+      case TILE_HIT:
+        c = 'H';
+        break;
+      case TILE_MISS:
+        c = 'M';
+        break;
       }
+
+      waddch(ui->board_win, c);
     }
+  }
+}
 
-    // Draw on top already placed ships.
-    for (int k = 0; k < index; k++) {
-      uint8_t length_k = SHIP_LENGTHS[k];
-      uint8_t x = ships[k].x;
-      uint8_t y = ships[k].y;
-      int orientation_k = ships[k].orientation;
+int cursor_input(struct UI *ui, int input) {
+  switch (input) {
+  case KEY_UP:
+    if (ui->cursor_y > 0)
+      ui->cursor_y--;
+    break;
+  case KEY_DOWN:
+    if (ui->cursor_y < 9)
+      ui->cursor_y++;
+    break;
+  case KEY_LEFT:
+    if (ui->cursor_x > 0)
+      ui->cursor_x--;
+    break;
+  case KEY_RIGHT:
+    if (ui->cursor_x < 9)
+      ui->cursor_x++;
+    break;
+  case ctrl('c'):
+    return 1;
+  }
 
-      for (int l = 0; l < length_k; l++) {
-        int draw_x = x + (orientation_k == HORIZONTAL ? l : 0);
-        int draw_y = y + (orientation_k == VERTICAL ? l : 0);
-        wmove(*board, board_y + draw_y, board_x + (draw_x * 2));
-        waddch(*board, 'S');
-      }
-    }
-
-    // Draw ship preview
-    for (int i = 0; i < length; i++) {
-      int draw_x = *select_x + (orientation == HORIZONTAL ? i : 0);
-      int draw_y = *select_y + (orientation == VERTICAL ? i : 0);
-      wmove(*board, board_y + draw_y, board_x + (draw_x * 2));
-
-      waddch(*board, 'S' | A_BOLD);
-    }
-
-    wmove(*board, board_y + *select_y, board_x + (*select_x * 2));
-    wrefresh(*board);
-
-    int ch = getch();
-    switch (ch) {
-    case KEY_UP:
-      if (orientation == HORIZONTAL) {
-        if (*select_y > 0)
-          (*select_y)--;
-      } else {
-        if (*select_y > 0)
-          (*select_y)--;
-      }
-      break;
-    case KEY_DOWN:
-      if (orientation == HORIZONTAL) {
-        if (*select_y < 9)
-          (*select_y)++;
-      } else {
-        if (*select_y < 10 - length)
-          (*select_y)++;
-      }
-      break;
-    case KEY_LEFT:
-      if (orientation == HORIZONTAL) {
-        if (*select_x > 0)
-          (*select_x)--;
-      } else {
-        if (*select_x > 0)
-          (*select_x)--;
-      }
-      break;
-    case KEY_RIGHT:
-      if (orientation == HORIZONTAL) {
-        if (*select_x < 10 - length)
-          (*select_x)++;
-      } else {
-        if (*select_x < 9)
-          (*select_x)++;
-      }
-      break;
-    case 'r':
-    case 'R':
-      orientation = (orientation == HORIZONTAL) ? VERTICAL : HORIZONTAL;
-      // Clamp position if out of bounds after rotation
-      if (orientation == HORIZONTAL) {
-        if (*select_x > 10 - length)
-          *select_x = 10 - length;
-        if (*select_y > 9)
-          *select_y = 9;
-      } else {
-        if (*select_y > 10 - length)
-          *select_y = 10 - length;
-        if (*select_x > 9)
-          *select_x = 9;
-      }
-      break;
-    case KEY_ENTER:
-    case 10:
-    case 27:
-      ships[index] = (struct ship){
-          .x = *select_x,
-          .y = *select_y,
-          .orientation = orientation,
-          .sunk = false,
-      };
-      return;
-    case ctrl('c'):
-      exit(0);
-      break;
-    }
-  } while (1);
+  wmove(ui->board_win, ui->cursor_y + ui->board_y, (ui->cursor_x * 2) + ui->board_x);
+  return 0;
 }

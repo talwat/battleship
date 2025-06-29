@@ -62,6 +62,7 @@ struct ship {
   uint8_t x;
   uint8_t y;
   int8_t coordinates[5]; // This holds either the x or y coordinates of the ship's cells, depending on it's orientation.
+  bool defined;
   bool sunk;
 };
 
@@ -78,5 +79,7 @@ struct ship {
 void render_placements(struct ship placements[5], enum Tile board[10][10]);
 
 void render_board(enum Tile board[10][10]);
+
+void empty_board(enum Tile board[10][10]);
 
 #endif

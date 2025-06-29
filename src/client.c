@@ -107,78 +107,23 @@ int main() {
 
   reset_prog_mode();
 
-  WINDOW *sidebar, *board, *lower;
-  int board_x, board_y;
-  init_main_ui(&sidebar, &board, &lower, &board_x, &board_y);
+  struct UI ui;
+  init_ui(&ui);
+  wrefresh(ui.board_win);
+
   SpeakSAM(48, "PLACE YOUR VESSELS.");
-  sleep(2);
-
-  // Move cursor to the top-left of the board area
-  wmove(board, board_y, board_x);
-  wrefresh(lower);
-  wrefresh(board);
-
-  int select_x = 0, select_y = 0;
-  struct ship ships[5] = {};
-
+  struct ship ships[5];
   for (int i = 0; i < 5; i++) {
-    select_ship_placement(&select_x, &select_y, i, &board, board_x, board_y, ships);
+    ships[i].defined = 0;
+    while (!(ships[i].defined)) {
+      render_board_ui(&ui);
+      if (cursor_input(&ui, getch()) != 0) {
+        exit(0);
+      }
+      wrefresh(ui.board_win);
+    }
   }
-
-  unsigned char data[10] = {0};
-  serialize_placements(data, ships);
-
-  def_prog_mode();
-  endwin();
-
-  struct packet place = new_packet(PLACE, data);
-  write_packet(fd, &place);
-
-  // while (true) {
-  //   struct packet turn = read_packet(fd);
-  //   if (turn.type == QUIT) {
-  //     printf("client: quit\n");
-  //     break;
-  //   }
-
-  //   if (*turn.data == player_id) {
-  //     printf("client: it's my turn!\n");
-
-  //     int x;
-  //     printf("client: select a target x (1-10): ");
-  //     scanf("%d", &x);
-
-  //     char y;
-  //     printf("client: select a target y (A-J): ");
-  //     scanf(" %c", &y);
-
-  //     unsigned char position = merge(x - 1, toupper(y) - 'A');
-  //     struct packet select = new_packet(SELECT, &position);
-  //     write_packet(fd, &select);
-  //   } else {
-  //     printf("client: waiting for opponent's turn...\n");
-  //   }
-
-  //   struct packet turn_result = read_packet(fd);
-  //   enum TurnResult result = turn_result.data[2];
-
-  //   if (result == TURN_HIT) {
-  //     SpeakSAM(48, "HIT.");
-  //     printf("client: hit!\n");
-  //   } else if (result == TURN_MISS) {
-  //     SpeakSAM(48, "MISS.");
-  //     printf("client: miss!\n");
-  //   } else if (result == TURN_SINK) {
-  //     SpeakSAM(48, "SINK.");
-  //     printf("client: sink!\n");
-  //   } else if (result == TURN_WIN) {
-  //     SpeakSAM(48, "WIN.");
-  //     printf("client: win!\n");
-  //     break;
-  //   } else {
-  //     printf("client: unknown turn result %d\n", result);
-  //   }
-  // }
+  getch();
 
   return 0;
 }
