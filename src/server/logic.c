@@ -151,6 +151,7 @@ enum Player loop(struct game_instance *game) {
 void get_placements(struct game_instance *game) {
   struct packet setup1 = new_packet(SETUP, (unsigned char *)game->player2.name);
   write_packet(game->player1.fd, &setup1);
+
   struct packet setup2 = new_packet(SETUP, (unsigned char *)game->player1.name);
   write_packet(game->player2.fd, &setup2);
 

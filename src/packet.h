@@ -84,4 +84,6 @@ bool parse_placements(unsigned char *data, struct ship placements[5]);
  */
 void write_packet(int fd, struct packet *packet);
 
+void free_packet(struct packet *packet);
+
 #endif

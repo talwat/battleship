@@ -71,7 +71,6 @@ struct packet read_packet(int fd) {
   if (packet_debug)
     printf("packet: received packet type %d (%s) with length %d\n", type, PACKETS[type].name, PACKETS[type].length);
 
-  // TODO: memory leak not good.
   unsigned char *data = malloc(PACKETS[type].length);
   read(fd, data, PACKETS[type].length);
 
@@ -84,6 +83,7 @@ struct packet read_packet(int fd) {
     }
     printf("\n");
   }
+
   return new;
 }
 
@@ -96,6 +96,17 @@ struct packet new_packet(int type, unsigned char *data) {
   };
 
   return result;
+}
+
+void free_packet(struct packet *packet) {
+  if (packet->data != NULL) {
+    free(packet->data);
+    packet->data = NULL;
+  }
+
+  packet->length = 0;
+  packet->type = NONE;
+  packet->name = NULL;
 }
 
 void write_packet(int fd, struct packet *packet) {

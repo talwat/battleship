@@ -97,6 +97,7 @@ bool select_tile(struct UI *ui) {
 void quit(int fd) {
   struct packet quit = new_packet(QUIT, NULL);
   write_packet(fd, &quit);
+  free_packet(&quit);
   endwin();
 
   printf("client: quitting...\n");
@@ -151,6 +152,7 @@ int main() {
 
   struct packet place = new_packet(PLACE, data);
   write_packet(fd, &place);
+
   empty_board(ui.board_data);
 
   while (1) {
