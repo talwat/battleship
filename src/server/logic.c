@@ -143,6 +143,8 @@ enum Player loop(struct game_instance *game) {
         game->current_player = PLAYER1;
       }
     }
+
+    free_packet(&select);
   }
 
   return winner;
@@ -164,4 +166,7 @@ void get_placements(struct game_instance *game) {
 
   render_placements(game->ships1, game->board1);
   render_placements(game->ships2, game->board2);
+
+  free_packet(&place1);
+  free_packet(&place2);
 }

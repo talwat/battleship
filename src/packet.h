@@ -84,6 +84,13 @@ bool parse_placements(unsigned char *data, struct ship placements[5]);
  */
 void write_packet(int fd, struct packet *packet);
 
+/**
+ * Frees the memory allocated for the packet's data.
+ * This function should be called after the packet is no longer needed
+ * to prevent memory leaks.
+ *
+ * @param packet Pointer to the packet structure whose data is to be freed.
+ */
 void free_packet(struct packet *packet);
 
 #endif

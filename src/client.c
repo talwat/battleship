@@ -97,11 +97,101 @@ bool select_tile(struct UI *ui) {
 void quit(int fd) {
   struct packet quit = new_packet(QUIT, NULL);
   write_packet(fd, &quit);
-  free_packet(&quit);
   endwin();
 
   printf("client: quitting...\n");
   exit(EXIT_SUCCESS);
+}
+
+bool turn(struct UI *ui, int fd, int player_id) {
+  render_board_ui(ui);
+  wrefresh(ui->board_win);
+
+  struct packet turn = read_packet(fd);
+  if (turn.type == QUIT) {
+    endwin();
+    printf("client: requested quit, exiting...\n");
+    return false;
+  }
+
+  if (turn.type != TURN) {
+    endwin();
+    printf("client: received unexpected packet type %d (%s)\n", turn.type, turn.name);
+    printf("client: expected %d (TURN)\n", TURN);
+    return false;
+  }
+
+  if (turn.data[0] == player_id) {
+    curs_set(1);
+    lower_status(ui, "Your turn! Select a target.");
+    SpeakSAM(48, "SELECT A TARGET.");
+
+    if (!select_tile(ui)) {
+      quit(fd);
+    };
+
+    uint8_t target = merge(ui->cursor_x, ui->cursor_y);
+    struct packet turn = new_packet(SELECT, &target);
+    write_packet(fd, &turn);
+  } else {
+    curs_set(0);
+    lower_status(ui, "Waiting for opponent to select a target.");
+  }
+
+  struct packet result = read_packet(fd);
+  if (result.type != TURN_RESULT) {
+    endwin();
+    printf("client: received unexpected packet type %d (%s)\n", result.type, result.name);
+    printf("client: expected %d (TURN_RESULT)\n", TURN_RESULT);
+    return false;
+  }
+
+  enum Player turn_player = result.data[0];
+  uint8_t target = result.data[1];
+  uint8_t x = target & 0x0F;
+  uint8_t y = (target >> 4) & 0x0F;
+
+  if (turn_player == player_id) {
+    switch (result.data[2]) {
+    case TURN_WIN:
+      ui->board_data[x][y] = TILE_HIT;
+      render_board_ui(ui);
+      move_cursor(ui, x, y);
+      wrefresh(ui->board_win);
+      SpeakSAM(48, "YOU WIN.");
+
+      lower_status(ui, "You win! Press any key to continue.");
+      getch();
+      exit(EXIT_SUCCESS);
+      return false;
+    case TURN_SINK:
+      SpeakSAM(48, "SINK.");
+      ui->board_data[x][y] = TILE_HIT;
+      break;
+    case TURN_MISS:
+      SpeakSAM(48, "MISS.");
+      ui->board_data[x][y] = TILE_MISS;
+      break;
+    case TURN_HIT:
+      SpeakSAM(48, "HIT.");
+      ui->board_data[x][y] = TILE_HIT;
+      break;
+    }
+  } else {
+    switch (result.data[2]) {
+    case TURN_WIN:
+      SpeakSAM(48, "YOU LOSE.");
+      lower_status(ui, "You lose! Press any key to continue.");
+      getch();
+      exit(EXIT_SUCCESS);
+      return false;
+    }
+  }
+
+  free_packet(&turn);
+  free_packet(&result);
+
+  return true;
 }
 
 int main() {
@@ -127,10 +217,11 @@ int main() {
   endwin();
 
   int fd = init_connection(address);
+
   struct packet setup;
   int player_id = login(fd, username, &setup);
-
   unsigned char *opponent_name = setup.data;
+
   printf("client: opponent name is %s\n", opponent_name);
 
   reset_prog_mode();
@@ -155,83 +246,6 @@ int main() {
 
   empty_board(ui.board_data);
 
-  while (1) {
-    render_board_ui(&ui);
-    wrefresh(ui.board_win);
-
-    struct packet select = read_packet(fd);
-    if (select.type == QUIT) {
-      endwin();
-      printf("client: requested quit, exiting...\n");
-      break;
-    }
-
-    if (select.type != TURN) {
-      endwin();
-      printf("client: received unexpected packet type %d (%s)\n", select.type, select.name);
-      printf("client: expected %d (TURN)\n", TURN);
-      return 1;
-    }
-
-    if (select.data[0] == player_id) {
-      curs_set(1);
-      lower_status(&ui, "Your turn! Select a target.");
-      SpeakSAM(48, "SELECT A TARGET.");
-
-      if (!select_tile(&ui)) {
-        quit(fd);
-      };
-
-      uint8_t target = merge(ui.cursor_x, ui.cursor_y);
-      struct packet turn = new_packet(SELECT, &target);
-      write_packet(fd, &turn);
-    } else {
-      curs_set(0);
-      lower_status(&ui, "Waiting for opponent to select a target.");
-    }
-
-    struct packet result = read_packet(fd);
-    if (result.type != TURN_RESULT) {
-      endwin();
-      printf("client: received unexpected packet type %d (%s)\n", result.type, result.name);
-      printf("client: expected %d (TURN_RESULT)\n", TURN_RESULT);
-      return 1;
-    }
-
-    enum Player turn_player = result.data[0];
-    uint8_t target = result.data[1];
-    uint8_t x = target & 0x0F;
-    uint8_t y = (target >> 4) & 0x0F;
-
-    if (turn_player == player_id) {
-      switch (result.data[2]) {
-      case TURN_MISS:
-        SpeakSAM(48, "MISS.");
-        ui.board_data[x][y] = TILE_MISS;
-        break;
-      case TURN_HIT:
-        SpeakSAM(48, "HIT.");
-        ui.board_data[x][y] = TILE_HIT;
-        break;
-      case TURN_SINK:
-        SpeakSAM(48, "SINK.");
-        ui.board_data[x][y] = TILE_HIT;
-        break;
-      case TURN_WIN:
-        SpeakSAM(48, "YOU WIN.");
-        ui.board_data[x][y] = TILE_HIT;
-        sleep(3);
-        exit(EXIT_SUCCESS);
-        return 0;
-      }
-    } else {
-      switch (result.data[2]) {
-      case TURN_WIN:
-        SpeakSAM(48, "YOU LOSE.");
-        sleep(3);
-        exit(EXIT_SUCCESS);
-        return 0;
-      }
-    }
-  }
+  // clang-format off
+  while (turn(&ui, fd, player_id));
 }

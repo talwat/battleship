@@ -33,6 +33,8 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
 
 void close_player(struct client *player) {
   printf("server: player %d connection closed\n", player->id);
+
+  free(player->name);
   close(player->fd);
 }
 
