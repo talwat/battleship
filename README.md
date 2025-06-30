@@ -1,9 +1,25 @@
 # battleship
 
-A very simple implementation of battleship in C with basic TCP multiplayer.
+A very simple implementation of battleship in C with basic TCP multiplayer and an ncurses interface.
 
 Yes, this is my first C program, and yes, I learned Rust before I learned C.
-Why? Higher-level API's. This is more about me learning how to use sockets than something real.
+Why? Higher-level APIs. This is more about me learning how to use sockets than something real.
+
+This program also, probably, leaks memory. So make sure you use a kernel that isn't 30 years old.
+
+## Compiling
+
+### Dependencies
+
+You'll need SDL2 (plus headers), and that's about it. This is because the client uses it to
+play the TTS voice when something happens.
+
+To compile, you will also need your distro's build-essentials group (or equivalent) which you should have already.
+
+### Make
+
+Once you have the dependencies, you should be able to run `make`, or optionally, `make server`/`make client` if you
+only want to compile the server or client, for whatever reason. This will also download libsam automatically.
 
 ## Packet Format
 
@@ -19,7 +35,9 @@ Each packet will begin with a header, as such:
 | ------------- | ------ |
 | `PACKET_TYPE` | 1 byte |
 
-For now, it's literally just a single byte that determines what the data portion of the packet will look like.
+It's just a single byte that determines what the data portion of the packet will look like.
+This is handy, since when reading the packet you need only read the first byte to know
+how much more to read.
 
 ### `0x0` - `NONE`
 
