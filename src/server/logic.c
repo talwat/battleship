@@ -3,6 +3,7 @@
 #include "packet.h"
 #include "server/socket.h"
 #include "stdio.h"
+#include <stdlib.h>
 
 enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int x, int y) {
   if (board[x][y] == TILE_SHIP_HORIZONTAL || board[x][y] == TILE_SHIP_VERTICAL) {
@@ -62,20 +63,32 @@ enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int 
   return TURN_MISS;
 }
 
-enum Player loop(struct game_instance game) {
+enum Player loop(struct game_instance *game) {
   enum Player winner = PLAYER_NONE;
 
   while (winner == PLAYER_NONE) {
-    struct packet turn = new_packet(TURN, (unsigned char *)&game.current_player);
-    write_packet(game.player1.fd, &turn);
-    write_packet(game.player2.fd, &turn);
+    printf("player 1's board:\n");
+    render_board(game->board1);
+    printf("\nplayer 2's board:\n");
+    render_board(game->board2);
+
+    struct packet turn = new_packet(TURN, (unsigned char *)&game->current_player);
+    write_packet(game->player1.fd, &turn);
+    write_packet(game->player2.fd, &turn);
 
     struct packet select;
-    printf("server: waiting for player %d to select a target\n", game.current_player);
-    if (game.current_player == PLAYER1) {
-      select = read_packet(game.player1.fd);
+    printf("server: waiting for player %d to select a target\n", game->current_player);
+    if (game->current_player == PLAYER1) {
+      select = read_packet(game->player1.fd);
     } else {
-      select = read_packet(game.player2.fd);
+      select = read_packet(game->player2.fd);
+    }
+
+    if (select.type != SELECT) {
+      perror("error: received unexpected packet type\n");
+      printf("expected SELECT (%d), got %d (%s)\n", SELECT, select.type, select.name);
+      exit(EXIT_FAILURE);
+      break;
     }
 
     uint8_t target = select.data[0];
@@ -89,10 +102,10 @@ enum Player loop(struct game_instance game) {
 
     enum TurnResult result = TURN_MISS;
 
-    if (game.current_player == PLAYER1) {
-      result = process_turn(game.ships2, game.board2, x, y);
+    if (game->current_player == PLAYER1) {
+      result = process_turn(game->ships2, game->board2, x, y);
     } else {
-      result = process_turn(game.ships1, game.board1, x, y);
+      result = process_turn(game->ships1, game->board1, x, y);
     }
 
     const char *result_str;
@@ -111,30 +124,25 @@ enum Player loop(struct game_instance game) {
       break;
     }
 
-    printf("server: player %d struck target (%d, %c) with result %d (%s)\n", game.current_player, x + 1, 'A' + y, result, result_str);
+    printf("server: player %d struck target (%d, %c) with result %d (%s)\n", game->current_player, x + 1, 'A' + y, result, result_str);
 
-    uint8_t data[3] = {game.current_player, target, result};
+    uint8_t data[3] = {game->current_player, target, result};
     struct packet turn_result = new_packet(TURN_RESULT, data);
-    write_packet(game.player1.fd, &turn_result);
-    write_packet(game.player2.fd, &turn_result);
+    write_packet(game->player1.fd, &turn_result);
+    write_packet(game->player2.fd, &turn_result);
 
     if (result == TURN_WIN) {
-      winner = game.current_player;
+      winner = game->current_player;
       break;
     }
 
     if (result != TURN_HIT && result != TURN_SINK) {
-      if (game.current_player == PLAYER1) {
-        game.current_player = PLAYER2;
+      if (game->current_player == PLAYER1) {
+        game->current_player = PLAYER2;
       } else {
-        game.current_player = PLAYER1;
+        game->current_player = PLAYER1;
       }
     }
-
-    printf("player 1's board:\n");
-    render_board(game.board1);
-    printf("\nplayer 2's board:\n");
-    render_board(game.board2);
   }
 
   return winner;

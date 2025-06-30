@@ -40,7 +40,7 @@ enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int 
  * @param board2         10x10 boolean array representing player 2's board.
  * @return enum Player   The winner of the game (PLAYER1 or PLAYER2).
  */
-enum Player loop(struct game_instance game);
+enum Player loop(struct game_instance *game);
 
 /**
  * Sends setup packets to both players, waits for their ship placements,

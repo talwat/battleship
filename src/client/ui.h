@@ -23,13 +23,16 @@ struct UI {
 enum CursorResult {
   CURSOR_CONTINUE,
   CURSOR_QUIT,
+  CURSOR_R,
   CURSOR_SELECT
 };
 
 bool select_server(char *username, char *address);
+bool place_ships(struct UI *ui, struct ship ships[5]);
+void lower_status(struct UI *ui, const char *status);
 void init_ui(struct UI *ui);
 void render_board_ui(struct UI *ui);
-enum CursorResult cursor_input(struct UI *ui, int input, enum Orientation *orientation);
+enum CursorResult cursor_input(struct UI *ui, int input);
 void move_cursor(struct UI *ui, int x, int y);
 
 #endif

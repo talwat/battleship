@@ -40,7 +40,7 @@ int main(int argc, char const *argv[]) {
   enum Player winner = PLAYER_NONE;
 
   while (winner == PLAYER_NONE) {
-    winner = loop(game);
+    winner = loop(&game);
   }
 
   printf("server: player %d wins!\n", winner);

@@ -30,6 +30,13 @@ CLIENT_OBJECTS = \
 
 all: $(TARGETS)
 
+lib/libsam.a:
+	mkdir -p lib
+	git clone https://github.com/talwat/libsam.git libsam
+	$(MAKE) -C libsam
+	mv libsam/libsam.a lib/libsam.a
+	rm -rf libsam
+
 # Main files
 obj/server.o: src/server.c $(HEADERS)
 	mkdir -p obj
@@ -54,14 +61,14 @@ obj/client/%.o: src/client/%.c $(HEADERS)
 	mkdir -p obj/client
 	$(CC) $(CFLAGS) -c $< -o $@
 
-server: $(SERVER_OBJECTS)
-	$(CC) $(CFLAGS) $(SERVER_OBJECTS) -o $@ $(LIBS)
-
-client: $(CLIENT_OBJECTS)
+client: lib/libsam.a $(CLIENT_OBJECTS)
 	$(CC) $(CFLAGS) $(CLIENT_OBJECTS) -o $@ $(LIBS)
 
+server: lib/libsam.a $(SERVER_OBJECTS)
+	$(CC) $(CFLAGS) $(SERVER_OBJECTS) -o $@ $(LIBS)
+
 clean:
-	rm -rf obj *.o $(TARGETS)
+	rm -rf obj lib *.o $(TARGETS)
 
 format:
 	clang-format -i src/*.c src/*.h src/server/*.c src/server/*.h src/client/*.c src/client/*.h

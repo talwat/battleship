@@ -5,6 +5,10 @@
 
 #include "client/ui.h"
 #include "game.h"
+#include "sam.h"
+
+// "Cruiser" and "submarine" were too hard for SAM to say...
+const char *SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
 
 void remove_trailing_spaces(char *s, int len) {
   for (int i = len - 1; i >= 0; i--) {
@@ -116,6 +120,92 @@ bool select_server(char *username, char *address) {
   return true;
 }
 
+void lower_status(struct UI *ui, const char *status) {
+  werase(ui->lower_win);
+  box(ui->lower_win, 0, 0);
+
+  int y = 1;
+
+  const char *line = status;
+  const char *next;
+  while (line && *line) {
+    next = strchr(line, '\n');
+    if (next) {
+      mvwprintw(ui->lower_win, y++, 2, "%.*s", (int)(next - line), line);
+      line = next + 1;
+    } else {
+      mvwprintw(ui->lower_win, y++, 2, "%s", line);
+      break;
+    }
+  }
+
+  wrefresh(ui->lower_win);
+}
+
+bool place_ships(struct UI *ui, struct ship ships[5]) {
+  lower_status(ui, "Place your vessels.\n\nUse arrow keys to move, R to rotate,\nand ENTER to place a ship.");
+  enum Orientation orientation = HORIZONTAL;
+
+  for (int i = 0; i < 5; i++) {
+    ships[i].defined = 0;
+    while (!(ships[i].defined)) {
+      render_board_ui(ui);
+
+      for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
+        if (orientation == HORIZONTAL) {
+          move_cursor(ui, ui->cursor_x + j, ui->cursor_y);
+          waddch(ui->board_win, 'S');
+        } else {
+          move_cursor(ui, ui->cursor_x, ui->cursor_y + j);
+          waddch(ui->board_win, 'S');
+        }
+      }
+
+      move_cursor(ui, ui->cursor_x, ui->cursor_y);
+      wrefresh(ui->board_win);
+
+      enum CursorResult result = cursor_input(ui, getch());
+      switch (result) {
+      case CURSOR_QUIT:
+        return false;
+      case CURSOR_R:
+        if (orientation == HORIZONTAL)
+          orientation = VERTICAL;
+        else
+          orientation = HORIZONTAL;
+        break;
+      case CURSOR_SELECT:
+        ships[i] = (struct ship){
+            .coordinates = {},
+            .defined = true,
+            .orientation = orientation,
+            .sunk = false,
+            .x = ui->cursor_x,
+            .y = ui->cursor_y,
+        };
+
+        render_placements(ships, ui->board_data);
+        wrefresh(ui->board_win);
+
+        SpeakSAM(48, SHIP_NAMES[i]);
+        break;
+      }
+
+      if (orientation == HORIZONTAL && ui->cursor_x > 10 - SHIP_LENGTHS[i])
+        ui->cursor_x = 10 - SHIP_LENGTHS[i];
+
+      if (orientation == VERTICAL && ui->cursor_y > 10 - SHIP_LENGTHS[i])
+        ui->cursor_y = 10 - SHIP_LENGTHS[i];
+    }
+
+    render_board_ui(ui);
+    move_cursor(ui, ui->cursor_x, ui->cursor_y);
+    wrefresh(ui->board_win);
+  }
+
+  return true;
+}
+
 void move_cursor(struct UI *ui, int x, int y) {
   wmove(ui->board_win, y + ui->board_y, (x * 2) + ui->board_x);
 }
@@ -183,7 +273,7 @@ void render_board_ui(struct UI *ui) {
   }
 }
 
-enum CursorResult cursor_input(struct UI *ui, int input, enum Orientation *orientation) {
+enum CursorResult cursor_input(struct UI *ui, int input) {
   switch (input) {
   case KEY_UP:
     if (ui->cursor_y > 0)
@@ -203,11 +293,7 @@ enum CursorResult cursor_input(struct UI *ui, int input, enum Orientation *orien
     break;
   case 'r':
   case 'R':
-    if (*orientation == HORIZONTAL)
-      *orientation = VERTICAL;
-    else
-      *orientation = HORIZONTAL;
-    break;
+    return CURSOR_R;
   case ctrl('c'):
     return CURSOR_QUIT;
   case KEY_ENTER:

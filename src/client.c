@@ -18,9 +18,6 @@
 #include "packet.h"
 #include "shared.h"
 
-// "Cruiser" and "submarine" were too hard for SAM to say...
-const char *SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
-
 uint8_t merge(uint8_t lower, uint8_t upper) {
   return ((upper & 0x0F) << 4) | (lower & 0x0F);
 }
@@ -79,6 +76,33 @@ int login(int fd, char *username, struct packet *data) {
   return player_id;
 }
 
+bool select_tile(struct UI *ui) {
+  while (true) {
+    render_board_ui(ui);
+
+    move_cursor(ui, ui->cursor_x, ui->cursor_y);
+    wrefresh(ui->board_win);
+
+    enum CursorResult result = cursor_input(ui, getch());
+    switch (result) {
+    case CURSOR_QUIT:
+      return false;
+    case CURSOR_SELECT:
+      wrefresh(ui->board_win);
+      return true;
+    }
+  }
+}
+
+void quit(int fd) {
+  struct packet quit = new_packet(QUIT, NULL);
+  write_packet(fd, &quit);
+  endwin();
+
+  printf("client: quitting...\n");
+  exit(EXIT_SUCCESS);
+}
+
 int main() {
   InitSAMAudio();
   atexit(CloseSAMAudio);
@@ -116,60 +140,96 @@ int main() {
 
   SpeakSAM(48, "PLACE YOUR VESSELS.");
 
-  enum Orientation orientation = HORIZONTAL;
-
   struct ship ships[5];
-  for (int i = 0; i < 5; i++) {
-    ships[i].defined = 0;
-    while (!(ships[i].defined)) {
-      render_board_ui(&ui);
+  if (!place_ships(&ui, ships)) {
+    quit(fd);
+  };
 
-      for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
-        if (orientation == HORIZONTAL) {
-          move_cursor(&ui, ui.cursor_x + j, ui.cursor_y);
-          waddch(ui.board_win, 'S');
-        } else {
-          move_cursor(&ui, ui.cursor_x, ui.cursor_y + j);
-          waddch(ui.board_win, 'S');
-        }
-      }
+  curs_set(0);
+  unsigned char data[10];
+  serialize_placements(data, ships);
 
-      move_cursor(&ui, ui.cursor_x, ui.cursor_y);
-      wrefresh(ui.board_win);
+  struct packet place = new_packet(PLACE, data);
+  write_packet(fd, &place);
+  empty_board(ui.board_data);
 
-      enum CursorResult result = cursor_input(&ui, getch(), &orientation);
-      switch (result) {
-      case CURSOR_QUIT:
-        exit(EXIT_SUCCESS);
-        return 0;
-      case CURSOR_SELECT:
-        ships[i] = (struct ship){
-            .coordinates = {},
-            .defined = true,
-            .orientation = HORIZONTAL,
-            .sunk = false,
-            .x = ui.cursor_x,
-            .y = ui.cursor_y,
-        };
+  while (1) {
+    render_board_ui(&ui);
+    wrefresh(ui.board_win);
 
-        render_placements(ships, ui.board_data);
-        wrefresh(ui.board_win);
-
-        SpeakSAM(48, SHIP_NAMES[i]);
-        break;
-      }
-
-      if (orientation == HORIZONTAL && ui.cursor_x > 10 - SHIP_LENGTHS[i])
-        ui.cursor_x = 10 - SHIP_LENGTHS[i];
-
-      if (orientation == VERTICAL && ui.cursor_y > 10 - SHIP_LENGTHS[i])
-        ui.cursor_y = 10 - SHIP_LENGTHS[i];
+    struct packet select = read_packet(fd);
+    if (select.type == QUIT) {
+      endwin();
+      printf("client: requested quit, exiting...\n");
+      break;
     }
 
-    render_board_ui(&ui);
-    move_cursor(&ui, ui.cursor_x, ui.cursor_y);
-    wrefresh(ui.board_win);
-  }
+    if (select.type != TURN) {
+      endwin();
+      printf("client: received unexpected packet type %d (%s)\n", select.type, select.name);
+      printf("client: expected %d (TURN)\n", TURN);
+      return 1;
+    }
 
-  return 0;
+    if (select.data[0] == player_id) {
+      curs_set(1);
+      lower_status(&ui, "Your turn! Select a target.");
+      SpeakSAM(48, "SELECT A TARGET.");
+
+      if (!select_tile(&ui)) {
+        quit(fd);
+      };
+
+      uint8_t target = merge(ui.cursor_x, ui.cursor_y);
+      struct packet turn = new_packet(SELECT, &target);
+      write_packet(fd, &turn);
+    } else {
+      curs_set(0);
+      lower_status(&ui, "Waiting for opponent to select a target.");
+    }
+
+    struct packet result = read_packet(fd);
+    if (result.type != TURN_RESULT) {
+      endwin();
+      printf("client: received unexpected packet type %d (%s)\n", result.type, result.name);
+      printf("client: expected %d (TURN_RESULT)\n", TURN_RESULT);
+      return 1;
+    }
+
+    enum Player turn_player = result.data[0];
+    uint8_t target = result.data[1];
+    uint8_t x = target & 0x0F;
+    uint8_t y = (target >> 4) & 0x0F;
+
+    if (turn_player == player_id) {
+      switch (result.data[2]) {
+      case TURN_MISS:
+        SpeakSAM(48, "MISS.");
+        ui.board_data[x][y] = TILE_MISS;
+        break;
+      case TURN_HIT:
+        SpeakSAM(48, "HIT.");
+        ui.board_data[x][y] = TILE_HIT;
+        break;
+      case TURN_SINK:
+        SpeakSAM(48, "SINK.");
+        ui.board_data[x][y] = TILE_HIT;
+        break;
+      case TURN_WIN:
+        SpeakSAM(48, "YOU WIN.");
+        ui.board_data[x][y] = TILE_HIT;
+        sleep(3);
+        exit(EXIT_SUCCESS);
+        return 0;
+      }
+    } else {
+      switch (result.data[2]) {
+      case TURN_WIN:
+        SpeakSAM(48, "YOU LOSE.");
+        sleep(3);
+        exit(EXIT_SUCCESS);
+        return 0;
+      }
+    }
+  }
 }

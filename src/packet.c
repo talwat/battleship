@@ -31,32 +31,30 @@ const struct {
 };
 
 bool parse_placements(unsigned char *data, struct ship placements[5]) {
-  for (int i = 0; i < PACKETS[3].length; i+=2) {
-      unsigned char position = data[i+1];
+  for (int i = 0; i < PACKETS[PLACE].length; i+=2) {
+    unsigned char position = data[i+1];
 
-      uint8_t high = (position >> 4) & 0x0F;
-      uint8_t low  = position & 0x0F;
+    uint8_t high = (position >> 4) & 0x0F;
+    uint8_t low  = position & 0x0F;
 
-      struct ship *ship = &placements[i/2];
+    struct ship *ship = &placements[i/2];
 
-      ship->orientation = data[i];
-      ship->x = low;
-      ship->y = high;
-      
-      uint8_t ship_length = SHIP_LENGTHS[i/2];
+    ship->orientation = data[i];
+    ship->x = low;
+    ship->y = high;
+    
+    uint8_t ship_length = SHIP_LENGTHS[i/2];
 
-      for (int j = 0; j < 5; j++) {
-          if (j >= ship_length) {
-              ship->coordinates[j] = -1;
-              continue;
-          }
-
-          if (ship->orientation == HORIZONTAL) {
-              ship->coordinates[j] = ship->x + j;
-          } else {
-              ship->coordinates[j] = ship->y + j;
-          }
+    for (int j = 0; j < 5; j++) {
+      if (ship->orientation == HORIZONTAL) {
+        ship->coordinates[j] = ship->x + j;
+      } else {
+        ship->coordinates[j] = ship->y + j;
       }
+    }
+  
+    ship->defined = true; // Ensure ship is marked as defined
+    ship->sunk = false;   // Initialize sunk status
   }
 
   return true;
@@ -66,9 +64,8 @@ struct packet read_packet(int fd) {
   PacketType type;
   read(fd, &type, 1);
 
-  // TODO: Make this implementation less terrible.
-  if (type == QUIT) {
-    exit(EXIT_SUCCESS);
+  if (type == NONE) {
+    exit(EXIT_FAILURE);
   }
 
   if (packet_debug)
@@ -103,7 +100,7 @@ struct packet new_packet(int type, unsigned char *data) {
 
 void write_packet(int fd, struct packet *packet) {
   if (packet_debug) {
-    printf("packet: sending packet type %d (%s) with length %d\n", packet->type, packet->name, packet->length);
+    printf("packet: sending packet type %d (%s) with length %d to %d\n", packet->type, packet->name, packet->length, fd);
     printf("        ");
     for (int i = 0; i < packet->length; i++) {
       printf("%02x ", packet->data[i]);
