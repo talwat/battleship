@@ -203,6 +203,8 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
     wrefresh(ui->board_win);
   }
 
+  lower_status(ui, "Waiting for the opponent\nto place their vessels.");
+
   return true;
 }
 
