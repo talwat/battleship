@@ -1,3 +1,6 @@
+#ifndef SOCKET_H
+#define SOCKET_H
+
 #include <arpa/inet.h>
 #include <stdint.h>
 
@@ -34,3 +37,5 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
 void close_player(struct client *player);
 
 int init(int *fd, struct sockaddr_in *address, socklen_t address_len);
+
+#endif

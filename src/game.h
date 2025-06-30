@@ -1,8 +1,8 @@
-#include <stdbool.h>
-#include <stdint.h>
-
 #ifndef GAME_H
 #define GAME_H
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #define CARRIER 5
 #define BATTLESHIP 4

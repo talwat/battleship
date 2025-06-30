@@ -2,6 +2,7 @@
 /server
 /client
 obj/
+lib/
 
 # Object files
 *.o
@@ -20,6 +21,7 @@ obj/
 
 # Libraries
 *.lib
+*.a
 *.la
 *.lo
 

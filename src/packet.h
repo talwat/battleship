@@ -1,10 +1,10 @@
+#ifndef PACKET_H
+#define PACKET_H
+
 #include <stdbool.h>
 #include <stdint.h>
 
 #include "game.h"
-
-#ifndef PACKET_H
-#define PACKET_H
 
 extern const bool packet_debug;
 

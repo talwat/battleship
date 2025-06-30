@@ -19,7 +19,7 @@
 #include "shared.h"
 
 // "Cruiser" and "submarine" were too hard for SAM to say...
-const char* SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
+const char *SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
 
 uint8_t merge(uint8_t lower, uint8_t upper) {
   return ((upper & 0x0F) << 4) | (lower & 0x0F);
@@ -161,7 +161,7 @@ int main() {
 
       if (orientation == HORIZONTAL && ui.cursor_x > 10 - SHIP_LENGTHS[i])
         ui.cursor_x = 10 - SHIP_LENGTHS[i];
-      
+
       if (orientation == VERTICAL && ui.cursor_y > 10 - SHIP_LENGTHS[i])
         ui.cursor_y = 10 - SHIP_LENGTHS[i];
     }

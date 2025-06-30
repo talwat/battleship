@@ -7,8 +7,8 @@
 #include "game.h"
 
 void remove_trailing_spaces(char *s, int len) {
-  for (int i = len; i > 0; i--) {
-    if (s[i] == '\0' || s[i] == ' ') {
+  for (int i = len - 1; i >= 0; i--) {
+    if (s[i] == ' ' || s[i] == '\0') {
       s[i] = '\0';
     } else {
       break;

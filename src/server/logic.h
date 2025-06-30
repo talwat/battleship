@@ -1,3 +1,6 @@
+#ifndef LOGIC_H
+#define LOGIC_H
+
 #include "game.h"
 #include "server/socket.h"
 
@@ -49,3 +52,5 @@ enum Player loop(struct game_instance game);
  * @param board2  The 10x10 board for player 2, to be filled with ship placements.
  */
 void get_placements(struct game_instance *game);
+
+#endif
