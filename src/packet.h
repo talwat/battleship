@@ -29,8 +29,7 @@ typedef uint8_t PacketType;
 
 /**
  * @struct packet
- *
- * Encapsulates the information required for a packet,
+ * @brief Encapsulates the information required for a packet,
  * including its type, length, name, and a pointer to the data payload.
  */
 struct packet {

@@ -42,17 +42,6 @@ bool parse_placements(unsigned char *data, struct ship placements[5]) {
     ship->orientation = data[i];
     ship->x = low;
     ship->y = high;
-    
-    uint8_t ship_length = SHIP_LENGTHS[i/2];
-
-    for (int j = 0; j < 5; j++) {
-      if (ship->orientation == HORIZONTAL) {
-        ship->coordinates[j] = ship->x + j;
-      } else {
-        ship->coordinates[j] = ship->y + j;
-      }
-    }
-  
     ship->defined = true; // Ensure ship is marked as defined
     ship->sunk = false;   // Initialize sunk status
   }

@@ -16,7 +16,10 @@ int main(int argc, char const *argv[]) {
   struct sockaddr_in address;
   socklen_t address_len = sizeof(address);
 
-  init(&fd, &address, address_len);
+  if (!init(&fd, &address, address_len)) {
+    perror("error: failed to initialize server socket\n");
+    exit(EXIT_FAILURE);
+  }
 
   struct client player1 =
       wait_for_client(1, fd, (struct sockaddr *)&address, &address_len);

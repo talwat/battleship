@@ -4,6 +4,11 @@
 #include "game.h"
 #include "server/socket.h"
 
+/**
+ * @struct game_instance
+ * @brief Holds all of the game state, including the current player,
+ * the ships for both players, their client information, and the game boards.
+ */
 struct game_instance {
   enum Player current_player;
   struct ship ships1[5];

@@ -193,7 +193,6 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
         break;
       case CURSOR_SELECT:
         ships[i] = (struct ship){
-            .coordinates = {},
             .defined = true,
             .orientation = orientation,
             .sunk = false,
@@ -204,7 +203,9 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
         render_placements(ships, ui->board_data);
         wrefresh(ui->main_win);
 
-        SpeakSAM(48, PHONETIC_SHIP_NAMES[i]);
+        SpeakSAM(48, (char *)PHONETIC_SHIP_NAMES[i]);
+        break;
+      case CURSOR_CONTINUE:
         break;
       }
 

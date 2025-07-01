@@ -18,6 +18,17 @@
 #include "packet.h"
 #include "shared.h"
 
+/**
+ * @struct instance
+ * @brief Represents a game instance for a client, containing player information and connection details.
+ */
+struct instance {
+  char *username;
+  char *opponent;
+  int id;
+  int fd;
+};
+
 uint8_t merge(uint8_t lower, uint8_t upper) {
   return ((upper & 0x0F) << 4) | (lower & 0x0F);
 }
@@ -96,6 +107,9 @@ bool select_tile(struct UI *ui) {
     case CURSOR_SELECT:
       wrefresh(ui->main_win);
       return true;
+    case CURSOR_R:
+    case CURSOR_CONTINUE:
+      break;
     }
   }
 }
@@ -108,13 +122,6 @@ void quit(int fd) {
   printf("client: quitting...\n");
   exit(EXIT_SUCCESS);
 }
-
-struct instance {
-  char username[16];
-  char opponent[16];
-  int id;
-  int fd;
-};
 
 bool turn(struct UI *ui, struct instance *instance) {
   render_board(ui, ui->side_win, ui->alt_board_data);

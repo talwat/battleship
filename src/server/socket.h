@@ -36,6 +36,14 @@ struct client wait_for_client(uint8_t id, int fd, struct sockaddr *address, sock
  */
 void close_player(struct client *player);
 
-int init(int *fd, struct sockaddr_in *address, socklen_t address_len);
+/**
+ * Initializes the server socket, binds it to the specified address and port, and prepares it for listening.
+ *
+ * @param fd Pointer to an integer that will hold the file descriptor of the created socket.
+ * @param address Pointer to a sockaddr_in structure that contains the address information.
+ * @param address_len The length of the address structure.
+ * @return true if the initialization was successful, false otherwise.
+ */
+bool init(int *fd, struct sockaddr_in *address, socklen_t address_len);
 
 #endif

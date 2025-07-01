@@ -42,6 +42,12 @@ enum Orientation {
   VERTICAL = 1
 };
 
+/**
+ * @enum Tile
+ * @brief Represents the different types of tiles on a game board.
+ *
+ * Each tile can be empty, occupied by a ship (horizontal or vertical), hit, or missed.
+ */
 enum Tile {
   TILE_EMPTY = 0,
   TILE_SHIP_HORIZONTAL = 1,
@@ -61,7 +67,6 @@ struct ship {
   enum Orientation orientation;
   uint8_t x;
   uint8_t y;
-  int8_t coordinates[5]; // This holds either the x or y coordinates of the ship's cells, depending on it's orientation.
   bool defined;
   bool sunk;
 };
@@ -80,6 +85,12 @@ void render_ship(uint8_t x, uint8_t y, enum Orientation orientation, uint8_t len
  */
 void render_placements(struct ship placements[5], enum Tile board[10][10]);
 
+/**
+ * This function iterates through the 10x10 game board and sets each tile to TILE_EMPTY,
+ * effectively clearing the board.
+ *
+ * @param board A 10x10 array representing the game board to be cleared.
+ */
 void empty_board(enum Tile board[10][10]);
 
 #endif

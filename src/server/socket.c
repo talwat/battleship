@@ -38,10 +38,10 @@ void close_player(struct client *player) {
   close(player->fd);
 }
 
-int init(int *fd, struct sockaddr_in *address, socklen_t address_len) {
+bool init(int *fd, struct sockaddr_in *address, socklen_t address_len) {
   if ((*fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
     perror("error: socket failed\n");
-    return -1;
+    return false;
   }
 
   address->sin_family = AF_INET;
@@ -51,19 +51,19 @@ int init(int *fd, struct sockaddr_in *address, socklen_t address_len) {
   int opt = 1;
   if (setsockopt(*fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
     perror("error: setsockopt failed\n");
-    return -1;
+    return false;
   }
 
   if ((bind(*fd, (struct sockaddr *)address, address_len)) != 0) {
     perror("error: socket bind failed.\n");
-    return -1;
+    return false;
   }
 
   if ((listen(*fd, 5)) != 0) {
     perror("error: listening failed\n");
-    return -1;
+    return false;
   }
 
   printf("server: listening on port %d\n", PORT);
-  return 0;
+  return true;
 }
