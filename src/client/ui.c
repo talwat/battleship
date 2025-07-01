@@ -238,9 +238,9 @@ void init_ui(struct UI *ui) {
   int width, height;
   getmaxyx(stdscr, height, width);
 
-  int board_window_height = height - (height >> 1) + 1;
+  int lower_window_height = (height >> 1) - 4;
+  int board_window_height = height - lower_window_height;
   int board_window_width = width >> 1;
-  int lower_window_height = (height >> 1) - 1;
 
   ui->main_win = newwin(board_window_height, board_window_width, 0, width - board_window_width);
   ui->board_y = (board_window_height - 10) / 2;
