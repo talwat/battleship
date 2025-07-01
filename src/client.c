@@ -63,7 +63,7 @@ void endwin_void() {
   endwin();
 }
 
-int login(int fd, char *username, struct packet *data) {
+struct instance login(int fd, char *username) {
   struct packet login = new_packet(LOGIN, (unsigned char *)username);
   write_packet(fd, &login);
 
@@ -72,23 +72,29 @@ int login(int fd, char *username, struct packet *data) {
   uint8_t player_id = confirm.data[0];
 
   printf("client: waiting for other player...\n");
-  *data = read_packet(fd);
-  return player_id;
+  struct packet setup = read_packet(fd);
+
+  return (struct instance){
+      .username = username,
+      .opponent = (char *)setup.data,
+      .id = player_id,
+      .fd = fd,
+  };
 }
 
 bool select_tile(struct UI *ui) {
   while (true) {
-    render_board_ui(ui);
+    render_active_board(ui);
 
-    move_cursor(ui, ui->cursor_x, ui->cursor_y);
-    wrefresh(ui->board_win);
+    move_cursor(ui, ui->main_win, ui->cursor_x, ui->cursor_y);
+    wrefresh(ui->main_win);
 
     enum CursorResult result = cursor_input(ui, getch());
     switch (result) {
     case CURSOR_QUIT:
       return false;
     case CURSOR_SELECT:
-      wrefresh(ui->board_win);
+      wrefresh(ui->main_win);
       return true;
     }
   }
@@ -103,11 +109,21 @@ void quit(int fd) {
   exit(EXIT_SUCCESS);
 }
 
-bool turn(struct UI *ui, int fd, int player_id) {
-  render_board_ui(ui);
-  wrefresh(ui->board_win);
+struct instance {
+  char username[16];
+  char opponent[16];
+  int id;
+  int fd;
+};
 
-  struct packet turn = read_packet(fd);
+bool turn(struct UI *ui, struct instance *instance) {
+  render_board(ui, ui->side_win, ui->alt_board_data);
+  wrefresh(ui->side_win);
+
+  render_active_board(ui);
+  wrefresh(ui->main_win);
+
+  struct packet turn = read_packet(instance->fd);
   if (turn.type == QUIT) {
     endwin();
     printf("client: requested quit, exiting...\n");
@@ -121,24 +137,24 @@ bool turn(struct UI *ui, int fd, int player_id) {
     return false;
   }
 
-  if (turn.data[0] == player_id) {
+  if (turn.data[0] == instance->id) {
     curs_set(1);
     lower_status(ui, "Your turn! Select a target.");
     SpeakSAM(48, "SELECT A TARGET.");
 
     if (!select_tile(ui)) {
-      quit(fd);
+      quit(instance->fd);
     };
 
     uint8_t target = merge(ui->cursor_x, ui->cursor_y);
     struct packet turn = new_packet(SELECT, &target);
-    write_packet(fd, &turn);
+    write_packet(instance->fd, &turn);
   } else {
     curs_set(0);
     lower_status(ui, "Waiting for opponent to select a target.");
   }
 
-  struct packet result = read_packet(fd);
+  struct packet result = read_packet(instance->fd);
   if (result.type != TURN_RESULT) {
     endwin();
     printf("client: received unexpected packet type %d (%s)\n", result.type, result.name);
@@ -151,41 +167,46 @@ bool turn(struct UI *ui, int fd, int player_id) {
   uint8_t x = target & 0x0F;
   uint8_t y = (target >> 4) & 0x0F;
 
-  if (turn_player == player_id) {
-    switch (result.data[2]) {
-    case TURN_WIN:
-      ui->board_data[x][y] = TILE_HIT;
-      render_board_ui(ui);
-      move_cursor(ui, x, y);
-      wrefresh(ui->board_win);
-      SpeakSAM(48, "YOU WIN.");
-
-      lower_status(ui, "You win! Press any key to continue.");
-      getch();
-      exit(EXIT_SUCCESS);
-      return false;
-    case TURN_SINK:
-      SpeakSAM(48, "SINK.");
-      ui->board_data[x][y] = TILE_HIT;
-      break;
-    case TURN_MISS:
-      SpeakSAM(48, "MISS.");
-      ui->board_data[x][y] = TILE_MISS;
-      break;
-    case TURN_HIT:
-      SpeakSAM(48, "HIT.");
-      ui->board_data[x][y] = TILE_HIT;
-      break;
-    }
+  enum Tile *tile;
+  if (turn_player == instance->id) {
+    tile = &(ui->board_data[x][y]);
   } else {
-    switch (result.data[2]) {
-    case TURN_WIN:
+    tile = &(ui->alt_board_data[x][y]);
+  }
+
+  switch (result.data[2]) {
+  case TURN_WIN:
+    *tile = TILE_HIT;
+    render_active_board(ui);
+    render_board(ui, ui->side_win, ui->alt_board_data);
+
+    move_cursor(ui, ui->main_win, x, y);
+    wrefresh(ui->main_win);
+    wrefresh(ui->side_win);
+
+    if (turn_player == instance->id) {
+      SpeakSAM(48, "YOU WIN.");
+      lower_status(ui, "You win! Press any key to continue.");
+    } else {
       SpeakSAM(48, "YOU LOSE.");
       lower_status(ui, "You lose! Press any key to continue.");
-      getch();
-      exit(EXIT_SUCCESS);
-      return false;
     }
+
+    getch();
+    exit(EXIT_SUCCESS);
+    return false;
+  case TURN_SINK:
+    SpeakSAM(48, "SINK.");
+    *tile = TILE_HIT;
+    break;
+  case TURN_MISS:
+    SpeakSAM(48, "MISS.");
+    *tile = TILE_MISS;
+    break;
+  case TURN_HIT:
+    SpeakSAM(48, "HIT.");
+    *tile = TILE_HIT;
+    break;
   }
 
   free_packet(&turn);
@@ -205,6 +226,9 @@ int main() {
   noecho();
   keypad(stdscr, TRUE);
   curs_set(1);
+  start_color();
+  use_default_colors();
+  init_pair(1, COLOR_GREEN, -1);
 
   char username[16];
   char address[16];
@@ -218,17 +242,14 @@ int main() {
 
   int fd = init_connection(address);
 
-  struct packet setup;
-  int player_id = login(fd, username, &setup);
-  unsigned char *opponent_name = setup.data;
-
-  printf("client: opponent name is %s\n", opponent_name);
+  struct instance instance = login(fd, username);
+  printf("client: opponent name is %s\n", instance.opponent);
 
   reset_prog_mode();
 
   struct UI ui;
   init_ui(&ui);
-  wrefresh(ui.board_win);
+  wrefresh(ui.main_win);
 
   SpeakSAM(48, "PLACE YOUR VESSELS.");
 
@@ -244,8 +265,18 @@ int main() {
   struct packet place = new_packet(PLACE, data);
   write_packet(fd, &place);
 
+  memcpy(ui.alt_board_data, ui.board_data, sizeof(ui.alt_board_data));
   empty_board(ui.board_data);
 
+  wmove(ui.main_win, 2, ui.board_x);
+  wprintw(ui.main_win, "Enemy Vessels");
+
+  werase(ui.side_win);
+  box(ui.side_win, 0, 0);
+
+  wmove(ui.side_win, 2, ui.board_x);
+  wprintw(ui.side_win, "Your Vessels");
+
   // clang-format off
-  while (turn(&ui, fd, player_id));
+  while (turn(&ui, &instance));
 }

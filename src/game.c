@@ -32,28 +32,3 @@ void render_placements(struct ship ships[5], enum Tile board[10][10]) {
     }
   }
 }
-
-void render_board(enum Tile board[10][10]) {
-  for (int y = 0; y < 10; y++) {
-    for (int x = 0; x < 10; x++) {
-      switch (board[x][y]) {
-      case TILE_EMPTY:
-        printf(". ");
-        break;
-      case TILE_SHIP_HORIZONTAL:
-        printf("- ");
-        break;
-      case TILE_SHIP_VERTICAL:
-        printf("| ");
-        break;
-      case TILE_HIT:
-        printf("H ");
-        break;
-      case TILE_MISS:
-        printf("M ");
-        break;
-      }
-    }
-    printf("\n");
-  }
-}

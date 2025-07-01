@@ -8,7 +8,8 @@
 #include "sam.h"
 
 // "Cruiser" and "submarine" were too hard for SAM to say...
-const char *SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
+const char *PHONETIC_SHIP_NAMES[5] = {"CARRIER", "BATTLE SHIP", "CRUZER", "SUBMUHREEN", "DESTROYER"};
+const char *SHIP_NAMES[5] = {"Carrier", "Battleship", "Cruiser", "Submarine", "Destroyer"};
 
 void remove_trailing_spaces(char *s, int len) {
   for (int i = len - 1; i >= 0; i--) {
@@ -143,26 +144,42 @@ void lower_status(struct UI *ui, const char *status) {
 }
 
 bool place_ships(struct UI *ui, struct ship ships[5]) {
-  lower_status(ui, "Place your vessels.\n\nUse arrow keys to move, R to rotate,\nand ENTER to place a ship.");
+  lower_status(ui, "Place your vessels.\n\nUse arrow keys to move, R to rotate, and ENTER to place a vessel.");
   enum Orientation orientation = HORIZONTAL;
 
   for (int i = 0; i < 5; i++) {
+    wmove(ui->side_win, 1, 2);
+    wprintw(ui->side_win, "Ships:");
+    for (int j = 0; j < 5; j++) {
+      if (i == j) {
+        wattron(ui->side_win, A_BOLD);
+      }
+
+      wmove(ui->side_win, j + 2, 4);
+      wprintw(ui->side_win, "%s: %d", SHIP_NAMES[j], SHIP_LENGTHS[j]);
+
+      if (i == j) {
+        wattroff(ui->side_win, A_BOLD);
+      }
+    }
+    wrefresh(ui->side_win);
+
     ships[i].defined = 0;
     while (!(ships[i].defined)) {
-      render_board_ui(ui);
+      render_active_board(ui);
 
       for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
         if (orientation == HORIZONTAL) {
-          move_cursor(ui, ui->cursor_x + j, ui->cursor_y);
-          waddch(ui->board_win, 'S');
+          move_cursor(ui, ui->main_win, ui->cursor_x + j, ui->cursor_y);
+          waddch(ui->main_win, 'S');
         } else {
-          move_cursor(ui, ui->cursor_x, ui->cursor_y + j);
-          waddch(ui->board_win, 'S');
+          move_cursor(ui, ui->main_win, ui->cursor_x, ui->cursor_y + j);
+          waddch(ui->main_win, 'S');
         }
       }
 
-      move_cursor(ui, ui->cursor_x, ui->cursor_y);
-      wrefresh(ui->board_win);
+      move_cursor(ui, ui->main_win, ui->cursor_x, ui->cursor_y);
+      wrefresh(ui->main_win);
 
       enum CursorResult result = cursor_input(ui, getch());
       switch (result) {
@@ -185,9 +202,9 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
         };
 
         render_placements(ships, ui->board_data);
-        wrefresh(ui->board_win);
+        wrefresh(ui->main_win);
 
-        SpeakSAM(48, SHIP_NAMES[i]);
+        SpeakSAM(48, PHONETIC_SHIP_NAMES[i]);
         break;
       }
 
@@ -198,18 +215,18 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
         ui->cursor_y = 10 - SHIP_LENGTHS[i];
     }
 
-    render_board_ui(ui);
-    move_cursor(ui, ui->cursor_x, ui->cursor_y);
-    wrefresh(ui->board_win);
+    render_active_board(ui);
+    move_cursor(ui, ui->main_win, ui->cursor_x, ui->cursor_y);
+    wrefresh(ui->main_win);
   }
 
-  lower_status(ui, "Waiting for the opponent\nto place their vessels.");
+  lower_status(ui, "Waiting for the opponent to place their vessels.");
 
   return true;
 }
 
-void move_cursor(struct UI *ui, int x, int y) {
-  wmove(ui->board_win, y + ui->board_y, (x * 2) + ui->board_x);
+void move_cursor(struct UI *ui, WINDOW *window, int x, int y) {
+  wmove(window, y + ui->board_y, (x * 2) + ui->board_x);
 }
 
 void init_ui(struct UI *ui) {
@@ -219,48 +236,55 @@ void init_ui(struct UI *ui) {
 
   int width, height;
   getmaxyx(stdscr, height, width);
-  box(stdscr, 0, 0);
-
-  const int sidebar_width = 31;
-  ui->sidebar_win = subwin(stdscr, height, sidebar_width, 0, 0);
-  box(ui->sidebar_win, 0, 0);
 
   int board_window_height = height - (height >> 1) + 1;
-  int board_window_width = width - sidebar_width;
+  int board_window_width = width >> 1;
   int lower_window_height = (height >> 1) - 1;
 
-  ui->board_win = newwin(board_window_height, board_window_width, 0, sidebar_width);
+  ui->main_win = newwin(board_window_height, board_window_width, 0, width - board_window_width);
   ui->board_y = (board_window_height - 10) / 2;
   ui->board_x = (board_window_width - 20) / 2 + 1;
-  box(ui->board_win, 0, 0);
-  render_board_ui(ui);
 
-  ui->lower_win = newwin(lower_window_height, width - sidebar_width, board_window_height, sidebar_width);
+  wattron(ui->main_win, COLOR_PAIR(1));
+  box(ui->main_win, 0, 0);
+  render_active_board(ui);
+
+  ui->side_win = newwin(board_window_height, board_window_width, 0, 0);
+  wattron(ui->side_win, COLOR_PAIR(1));
+  box(ui->side_win, 0, 0);
+
+  ui->lower_win = newwin(lower_window_height, width, board_window_height, 0);
+  wattron(ui->lower_win, COLOR_PAIR(1));
   box(ui->lower_win, 0, 0);
 
   refresh();
 
-  move_cursor(ui, ui->cursor_x, ui->cursor_y);
+  move_cursor(ui, ui->main_win, ui->cursor_x, ui->cursor_y);
 
-  wrefresh(ui->board_win);
+  wrefresh(ui->main_win);
   wrefresh(ui->lower_win);
+  wrefresh(ui->side_win);
 }
 
-void render_board_ui(struct UI *ui) {
+void render_active_board(struct UI *ui) {
+  render_board(ui, ui->main_win, ui->board_data);
+}
+
+void render_board(struct UI *ui, WINDOW *window, enum Tile board[10][10]) {
   for (int y = 0; y < 10; y++) {
     for (int x = 0; x < 10; x++) {
-      move_cursor(ui, x, y);
+      move_cursor(ui, window, x, y);
 
-      char c;
-      switch (ui->board_data[x][y]) {
+      int c;
+      switch (board[x][y]) {
       case TILE_EMPTY:
         c = '.';
         break;
       case TILE_SHIP_HORIZONTAL:
-        c = '-';
+        c = '-' | A_BOLD;
         break;
       case TILE_SHIP_VERTICAL:
-        c = '|';
+        c = '|' | A_BOLD;
         break;
       case TILE_HIT:
         c = 'H';
@@ -270,7 +294,7 @@ void render_board_ui(struct UI *ui) {
         break;
       }
 
-      waddch(ui->board_win, c);
+      waddch(window, c);
     }
   }
 }
