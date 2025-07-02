@@ -60,8 +60,11 @@ struct packet read_packet(int fd) {
   if (packet_debug)
     printf("packet: received packet type %d (%s) with length %d\n", type, PACKETS[type].name, PACKETS[type].length);
 
-  unsigned char *data = malloc(PACKETS[type].length);
-  read(fd, data, PACKETS[type].length);
+  unsigned char *data = NULL;
+  if (PACKETS[type].length > 0) {
+    data = malloc(PACKETS[type].length);
+    read(fd, data, PACKETS[type].length);
+  }
 
   struct packet new = new_packet(type, data);
   

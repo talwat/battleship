@@ -5,6 +5,17 @@
 #include "stdio.h"
 #include <stdlib.h>
 
+void quit(struct client *quit, struct client *other) {
+  printf("server: player %s quit\n", quit->name);
+  close_player(quit);
+
+  struct packet packet = new_packet(QUIT, NULL);
+  write_packet(other->fd, &packet);
+  close_player(other);
+
+  exit(EXIT_SUCCESS);
+}
+
 void render_board(enum Tile board[10][10]) {
   for (int y = 0; y < 10; y++) {
     for (int x = 0; x < 10; x++) {
@@ -105,15 +116,12 @@ enum Player loop(struct game_instance *game) {
     printf("server: waiting for player %d to select a target\n", game->current_player);
     if (game->current_player == PLAYER1) {
       select = read_packet(game->player1.fd);
+      if (select.type == QUIT)
+        quit(&game->player1, &game->player2);
     } else {
       select = read_packet(game->player2.fd);
-    }
-
-    if (select.type == QUIT) {
-      printf("server: player %d quit\n", game->current_player);
-      close_player(&game->player1);
-      close_player(&game->player2);
-      exit(EXIT_SUCCESS);
+      if (select.type == QUIT)
+        quit(&game->player2, &game->player1);
     }
 
     if (select.type != SELECT) {
@@ -191,7 +199,14 @@ void get_placements(struct game_instance *game) {
 
   printf("server: waiting for placements\n");
   struct packet place1 = read_packet(game->player1.fd);
+  if (place1.type == QUIT) {
+    quit(&game->player1, &game->player2);
+  }
+
   struct packet place2 = read_packet(game->player2.fd);
+  if (place2.type == QUIT) {
+    quit(&game->player2, &game->player1);
+  }
 
   parse_placements(place1.data, game->ships1);
   parse_placements(place2.data, game->ships2);

@@ -123,6 +123,12 @@ void quit(int fd) {
   exit(EXIT_SUCCESS);
 }
 
+void passive_quit() {
+  endwin();
+  printf("client: requested quit, exiting...\n");
+  exit(EXIT_SUCCESS);
+}
+
 bool turn(struct UI *ui, struct instance *instance) {
   render_board(ui, ui->side_win, ui->alt_board_data);
   wrefresh(ui->side_win);
@@ -132,8 +138,7 @@ bool turn(struct UI *ui, struct instance *instance) {
 
   struct packet turn = read_packet(instance->fd);
   if (turn.type == QUIT) {
-    endwin();
-    printf("client: requested quit, exiting...\n");
+    passive_quit();
     return false;
   }
 
@@ -162,6 +167,11 @@ bool turn(struct UI *ui, struct instance *instance) {
   }
 
   struct packet result = read_packet(instance->fd);
+  if (turn.type == QUIT) {
+    passive_quit();
+    return false;
+  }
+
   if (result.type != TURN_RESULT) {
     endwin();
     printf("client: received unexpected packet type %d (%s)\n", result.type, result.name);
