@@ -2,6 +2,7 @@
 /server
 /client
 obj/
+.DS_Store
 lib
 
 # Object files
