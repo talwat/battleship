@@ -6,10 +6,12 @@
 #include <stdlib.h>
 
 void quit(struct client *quit, struct client *other) {
+  struct packet packet = new_packet(QUIT, NULL);
+
   printf("server: player %s quit\n", quit->name);
+  write_packet(quit->fd, &packet); // This will probably not be read unless the server initiates the quit.
   close_player(quit);
 
-  struct packet packet = new_packet(QUIT, NULL);
   write_packet(other->fd, &packet);
   close_player(other);
 
@@ -213,6 +215,18 @@ void get_placements(struct game_instance *game) {
 
   render_placements(game->ships1, game->board1);
   render_placements(game->ships2, game->board2);
+
+  for (int i = 0; i < 5; i++) {
+    if (!validate_ship(&game->ships1[i], i, game->board1)) {
+      printf("error: invalid ship placement for player 1 at index %d\n", i);
+      quit(&game->player1, &game->player2);
+    }
+
+    if (!validate_ship(&game->ships2[i], i, game->board2)) {
+      printf("error: invalid ship placement for player 2 at index %d\n", i);
+      quit(&game->player1, &game->player2);
+    }
+  }
 
   free_packet(&place1);
   free_packet(&place2);

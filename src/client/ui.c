@@ -192,6 +192,19 @@ bool place_ships(struct UI *ui, struct ship ships[5]) {
           orientation = HORIZONTAL;
         break;
       case CURSOR_SELECT:
+        bool valid = true;
+        for (int j = 0; j < SHIP_LENGTHS[i]; j++) {
+          if ((orientation == HORIZONTAL && ui->board_data[ui->cursor_x + j][ui->cursor_y] != TILE_EMPTY) ||
+              (orientation == VERTICAL && ui->board_data[ui->cursor_x][ui->cursor_y + j] != TILE_EMPTY)) {
+            valid = false;
+            break;
+          }
+        }
+
+        if (valid == false) {
+          continue;
+        }
+
         ships[i] = (struct ship){
             .defined = true,
             .orientation = orientation,

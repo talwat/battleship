@@ -139,3 +139,6 @@ Content Length: 0 bytes.
 
 This can be sent by a player at any time, and will end the game right after it is sent to the server.
 In this case, the server will then send back the `QUIT` packet to both clients, indicating that a player quit.
+
+Additionally, if a client sends an invalid packet due to a mistake on the client side, then this packet will also
+be sent by the server to both players.

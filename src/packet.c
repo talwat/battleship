@@ -30,6 +30,29 @@ const struct {
     {.length = 0,  .name = "QUIT"},          // 0x8
 };
 
+bool validate_ship(struct ship *ship, int index, enum Tile board[10][10]) {
+  if (ship->x < 0 || ship->x >= 10 || ship->y < 0 || ship->y >= 10) {
+    return false;
+  }
+
+  if (ship->orientation != HORIZONTAL && ship->orientation != VERTICAL) {
+    return false;
+  }
+
+  for (int i = 0; i < SHIP_LENGTHS[index]; i++) {
+    if ((ship->orientation == HORIZONTAL && board[ship->x + i][ship->y] != TILE_EMPTY) ||
+        (ship->orientation == VERTICAL && board[ship->x][ship->y + i] != TILE_EMPTY)) {
+      return false;
+    }
+  }
+
+  if (ship->sunk) {
+    return false;
+  }
+
+  return true;
+}
+
 bool parse_placements(unsigned char *data, struct ship placements[5]) {
   for (int i = 0; i < PACKETS[PLACE].length; i+=2) {
     unsigned char position = data[i+1];
@@ -42,8 +65,8 @@ bool parse_placements(unsigned char *data, struct ship placements[5]) {
     ship->orientation = data[i];
     ship->x = low;
     ship->y = high;
-    ship->defined = true; // Ensure ship is marked as defined
-    ship->sunk = false;   // Initialize sunk status
+    ship->defined = true;
+    ship->sunk = false;
   }
 
   return true;

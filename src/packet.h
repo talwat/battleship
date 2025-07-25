@@ -75,6 +75,17 @@ struct packet read_packet(int fd);
 bool parse_placements(unsigned char *data, struct ship placements[5]);
 
 /**
+ * Validates a ship's placement on the board by checking its coordinates, orientation,
+ * and whether it overlaps with existing ships. Returns true if the placement is valid.
+ *
+ * @param ship Pointer to the ship structure to validate.
+ * @param index Index of the ship to determine its length.
+ * @param board The game board represented as a 2D array of Tile enums.
+ * @return true if the ship placement is valid, false otherwise.
+ */
+bool validate_ship(struct ship *ship, int index, enum Tile board[10][10]);
+
+/**
  * Sends the type and data of the given packet to the provided
  * file descriptor. The packet's type is written first, followed by its data.
  *
