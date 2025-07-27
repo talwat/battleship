@@ -14,7 +14,7 @@
 const bool packet_debug = false;
 
 // clang-format off
-/* Contains a list of packet definitions. */
+// Contains a list of packet definitions.
 const struct {
   uint8_t length;
   const char *name;
@@ -40,8 +40,8 @@ bool validate_ship(struct ship *ship, int index, enum Tile board[10][10]) {
   }
 
   for (int i = 0; i < SHIP_LENGTHS[index]; i++) {
-    if ((ship->orientation == HORIZONTAL && board[ship->x + i][ship->y] != TILE_EMPTY) ||
-        (ship->orientation == VERTICAL && board[ship->x][ship->y + i] != TILE_EMPTY)) {
+    enum Tile tile = (ship->orientation == HORIZONTAL) ? board[ship->x + i][ship->y] : board[ship->x][ship->y + i];
+    if (tile != TILE_EMPTY) {
       return false;
     }
   }

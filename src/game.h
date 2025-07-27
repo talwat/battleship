@@ -82,8 +82,9 @@ void render_ship(uint8_t x, uint8_t y, enum Orientation orientation, uint8_t len
  *
  * @param placements An array of ship structures representing the placements of ships.
  * @param board A 10x10 boolean array representing the game board. Cells occupied by ships are set to true.
+ * @return true if all placements are valid and rendered successfully, false if any placement is invalid.
  */
-void render_placements(struct ship placements[5], enum Tile board[10][10]);
+bool render_placements(struct ship placements[5], enum Tile board[10][10]);
 
 /**
  * This function iterates through the 10x10 game board and sets each tile to TILE_EMPTY,

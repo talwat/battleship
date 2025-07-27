@@ -47,14 +47,13 @@ enum TurnResult process_turn(struct ship ships[5], enum Tile board[10][10], int 
   if (board[x][y] == TILE_SHIP_HORIZONTAL || board[x][y] == TILE_SHIP_VERTICAL) {
     board[x][y] = TILE_HIT;
 
-    bool sunk = false; // Whether the player sunk a ship this turn
-    int sink_count = 0;
+    bool sunk = false;  // Whether the player sunk a ship this turn.
+    int sink_count = 0; // Number of ships sunk this turn.
 
-    // Calculate if any ship has been sunk
     for (int i = 0; i < 5; i++) {
       if (ships[i].sunk) {
         sink_count++;
-        continue; // Skip already sunk ships
+        continue;
       }
 
       int hit_count = 0;
@@ -213,19 +212,14 @@ void get_placements(struct game_instance *game) {
   parse_placements(place1.data, game->ships1);
   parse_placements(place2.data, game->ships2);
 
-  render_placements(game->ships1, game->board1);
-  render_placements(game->ships2, game->board2);
+  if (!render_placements(game->ships1, game->board1)) {
+    printf("error: invalid ship placement for player 1\n");
+    quit(&game->player1, &game->player2);
+  }
 
-  for (int i = 0; i < 5; i++) {
-    if (!validate_ship(&game->ships1[i], i, game->board1)) {
-      printf("error: invalid ship placement for player 1 at index %d\n", i);
-      quit(&game->player1, &game->player2);
-    }
-
-    if (!validate_ship(&game->ships2[i], i, game->board2)) {
-      printf("error: invalid ship placement for player 2 at index %d\n", i);
-      quit(&game->player1, &game->player2);
-    }
+  if (!render_placements(game->ships2, game->board2)) {
+    printf("error: invalid ship placement for player 1\n");
+    quit(&game->player2, &game->player1);
   }
 
   free_packet(&place1);

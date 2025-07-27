@@ -1,4 +1,5 @@
 #include "game.h"
+#include "packet.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -13,10 +14,16 @@ void empty_board(enum Tile board[10][10]) {
   }
 }
 
-void render_placements(struct ship ships[5], enum Tile board[10][10]) {
+bool render_placements(struct ship ships[5], enum Tile board[10][10]) {
+  empty_board(board);
+
   for (int i = 0; i < 5; i++) {
     if (!ships[i].defined) {
       break;
+    }
+
+    if (!validate_ship(&ships[i], i, board)) {
+      return false;
     }
 
     uint8_t length = SHIP_LENGTHS[i];
@@ -31,4 +38,6 @@ void render_placements(struct ship ships[5], enum Tile board[10][10]) {
       }
     }
   }
+
+  return true;
 }
